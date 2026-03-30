@@ -898,3 +898,494 @@ Three pages. Brutalist yellow-black. During the voting period, every tally shows
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
+│  SEALFI   [Proposals] [Vote]                [0x3f...] [Sepolia]     │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  PROPOSALS                             [+ New Proposal]             │
+│                                                                      │
+│  [ACTIVE] [CLOSED] [ALL]                                             │
+│                                                                      │
+│  ──────────────────────────────────────────────────────────────     │
+│  #3  Increase treasury allocation to 12%                            │
+│      Proposed by: 0x3f...a912                                       │
+│      Voting closes: 2026-03-30 08:00 UTC (2d 14h remaining)        │
+│      FOR: [sealed]  AGAINST: [sealed]  ABSTAIN: [sealed]           │
+│      Participation: 847 votes cast  (amount sealed)                 │
+│      Status: ACTIVE                                                  │
+│      [Vote →]                                                        │
+│  ──────────────────────────────────────────────────────────────     │
+│  #2  Add HBAR as accepted collateral                                │
+│      Proposed by: 0x7a...c031                                       │
+│      Voting closes: 2026-03-29 08:00 UTC (1d 3h remaining)         │
+│      FOR: [sealed]  AGAINST: [sealed]  ABSTAIN: [sealed]           │
+│      Participation: 1,203 votes cast  (amount sealed)               │
+│      Status: ACTIVE                                                  │
+│      [Vote →]                                                        │
+│  ──────────────────────────────────────────────────────────────     │
+│  #1  Adjust protocol fee from 0.30% to 0.25%                       │
+│      Proposed by: 0x1b...f220                                       │
+│      Closed: 2026-03-27 08:00 UTC                                   │
+│      FOR: 2,104,221  AGAINST: 891,044  ABSTAIN: 112,003            │
+│      Result: PASSED ●  Executed: Yes                                │
+│  ──────────────────────────────────────────────────────────────     │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+Key visual distinction:
+- Active proposals: `[sealed]` in yellow Space Mono for all tally fields
+- Closed proposals: real numbers in white Space Mono
+- Participation count (number of voters) is public — only the amounts are sealed
+
+---
+
+## 16. Vote Page
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  SEALFI   [Proposals] [Vote]                [0x3f...] [Sepolia]     │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  PROPOSAL #3                                                         │
+│  Increase treasury allocation to 12%                                 │
+│                                                                      │
+│  Proposed by 0x3f...a912 · Closes 2026-03-30 08:00 UTC              │
+│  2 days 14 hours remaining                                           │
+│                                                                      │
+│  DESCRIPTION                                                         │
+│  ──────────────────────────────────────────────────────────         │
+│  This proposal increases the protocol treasury allocation            │
+│  from 8% to 12% of all protocol fees. Funds will be used            │
+│  for grants, audits, and ecosystem development.                     │
+│                                                                      │
+│  CURRENT TALLY                                                       │
+│  ──────────────────────────────────────────────────────────         │
+│  FOR:      [sealed]                                                  │
+│  AGAINST:  [sealed]                                                  │
+│  ABSTAIN:  [sealed]                                                  │
+│  Voters:   847 addresses have voted                                  │
+│                                                                      │
+│  Tally reveals at close. Sealed until 2026-03-30 08:00 UTC.        │
+│                                                                      │
+│  CAST YOUR VOTE                                                      │
+│  ──────────────────────────────────────────────────────────         │
+│  Your voting power: 500,000 SEAL                                     │
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │              │  │              │  │              │              │
+│  │     FOR      │  │   AGAINST    │  │   ABSTAIN    │              │
+│  │              │  │              │  │              │              │
+│  └──────────────┘  └──────────────┘  └──────────────┘              │
+│                                                                      │
+│  Your vote is encrypted before it leaves your browser.              │
+│  Nobody can see how you voted — not during voting, not after.       │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                      CAST SEALED VOTE                          │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+Vote selection UX:
+- Three large equal-width buttons: FOR (left), AGAINST (center), ABSTAIN (right)
+- Selected state: yellow border `2px solid #FFE500`, yellow label
+- Unselected: `1px solid #1E1E1E`, gray label
+- CTA button only active when a vote is selected
+- After casting: "Your sealed vote was recorded. The tally remains sealed until 2026-03-30 08:00 UTC."
+
+---
+
+## 17. Stitch MCP Server — UI Build Instructions
+
+**The agent building this frontend MUST use the Stitch MCP server.**
+
+```json
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": ["-y", "stitch-mcp"],
+      "env": { "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID" }
+    }
+  }
+}
+```
+
+### Landing page prompt
+
+```
+Generate a brutalist minimalist landing page for SealFi, a confidential
+DAO governance protocol on Ethereum using Zama fhEVM.
+
+Design constraints:
+- Background: #0A0A0A
+- Primary accent: #FFE500 (yellow)
+- Text: #F5F5F5 only
+- Zero gradients. Zero rounded corners on containers (2px on inputs only).
+- Fonts: Space Grotesk (headings, 700/800 weight) + Space Mono (data)
+- Style: brutalist, raw, industrial
+
+Content:
+- Hero: "EVERY VOTE IS SEALED." massive Space Grotesk bold uppercase
+- Side-by-side comparison: Compound Governor live tally (real numbers)
+  vs SealFi (all fields showing [sealed] in yellow Space Mono)
+- Active proposals list: active show [sealed] tally, closed show numbers
+- Five-step how-it-works section in monospace numbered list style
+- No icons, no illustrations
+```
+
+### Proposals page prompt
+
+```
+Generate a proposals list page for SealFi DAO governance.
+Design constraints: [same as landing]
+Components:
+- Tab filter: ACTIVE / CLOSED / ALL
+- Proposal cards with: title, proposer address, voting countdown,
+  tally fields ([sealed] in yellow mono for active, real numbers for closed),
+  voter count (plaintext), status badge, Vote button
+- New Proposal button (top right)
+- All active tally fields must show [sealed] in Space Mono yellow
+- Closed tally fields show real numbers in white Space Mono
+```
+
+### Vote page prompt
+
+```
+Generate a vote casting page for SealFi DAO governance.
+Design constraints: [same as landing]
+Components:
+- Proposal title and description
+- Tally section: all three fields showing [sealed] with seal timestamp
+- Three large equal-width vote buttons: FOR / AGAINST / ABSTAIN
+  Selected state: 2px yellow border and yellow text
+  Unselected: 1px dark border and gray text
+- Your voting power display (plaintext SEAL balance)
+- Large CTA: CAST SEALED VOTE (disabled until selection made)
+- Post-vote confirmation message
+```
+
+---
+
+## 18. Design System
+
+Identical color and typography rules to SHADE and NullFi. Same brutalist system. One change: the `[encrypted]` signature label from SHADE/NullFi becomes `[sealed]` in SealFi — same yellow Space Mono style, different word because the metaphor is a sealed envelope not a cryptographic value.
+
+### Color tokens
+
+```css
+:root {
+  --black:        #0A0A0A;
+  --yellow:       #FFE500;
+  --yellow-dim:   #FFE50020;
+  --white:        #F5F5F5;
+  --gray:         #888888;
+  --border:       #1E1E1E;
+  --border-yellow:#FFE500;
+  --sealed:       #FFE500;  /* [sealed] tag color */
+}
+```
+
+### Typography
+
+```css
+.heading-xl  { font-family: 'Space Grotesk'; font-size: clamp(48px,8vw,96px); font-weight: 800; text-transform: uppercase; letter-spacing: -2px; }
+.heading-lg  { font-family: 'Space Grotesk'; font-size: 40px; font-weight: 700; text-transform: uppercase; }
+.label       { font-family: 'Space Grotesk'; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+.body        { font-family: 'Space Grotesk'; font-size: 16px; font-weight: 400; line-height: 1.7; }
+.mono        { font-family: 'Space Mono';    font-size: 13px; font-weight: 400; }
+.sealed      { font-family: 'Space Mono';    font-size: 13px; color: #FFE500; }
+```
+
+### SealedValue component
+
+```tsx
+// components/ui/SealedValue.tsx
+// During active proposal: shows [sealed]
+// After close + reveal: shows the real number
+
+interface Props {
+  value: number | undefined  // undefined = still sealed
+  label?: string
+}
+
+export function SealedValue({ value, label }: Props) {
+  if (value === undefined) {
+    return <span className="font-mono text-yellow-400">[sealed]</span>
+  }
+  return (
+    <span className="font-mono text-white">
+      {value.toLocaleString()}
+    </span>
+  )
+}
+```
+
+---
+
+## 19. Project Structure
+
+```
+sealfi/
+├── contracts/
+│   ├── SealGovernor.sol
+│   ├── SealTally.sol
+│   ├── SealToken.sol
+│   └── hardhat.config.ts
+│
+└── frontend/
+    ├── app/
+    │   ├── layout.tsx
+    │   ├── page.tsx              ← Landing
+    │   ├── proposals/
+    │   │   └── page.tsx
+    │   └── vote/
+    │       └── [id]/
+    │           └── page.tsx
+    ├── components/
+    │   ├── layout/
+    │   │   └── Navbar.tsx
+    │   ├── proposals/
+    │   │   ├── ProposalCard.tsx
+    │   │   ├── ProposalList.tsx
+    │   │   └── NewProposalForm.tsx
+    │   ├── vote/
+    │   │   ├── VoteButtons.tsx
+    │   │   ├── TallyDisplay.tsx    ← [sealed] vs revealed numbers
+    │   │   └── VoteConfirmation.tsx
+    │   └── ui/
+    │       ├── SealedValue.tsx     ← [sealed] / real number
+    │       ├── CountdownTimer.tsx
+    │       ├── Button.tsx
+    │       └── StatusBadge.tsx
+    ├── hooks/
+    │   ├── useSealGovernor.ts
+    │   ├── useProposals.ts
+    │   ├── useVote.ts
+    │   └── useFhevm.ts
+    ├── lib/
+    │   ├── contracts.ts
+    │   ├── fhevm.ts
+    │   └── wagmi.ts
+    ├── .env.local.example
+    ├── next.config.ts
+    ├── tailwind.config.ts
+    └── package.json
+```
+
+---
+
+## 20. Environment and Deploy
+
+### `.env.local.example`
+
+```bash
+NEXT_PUBLIC_CHAIN_ID=11155111
+NEXT_PUBLIC_RPC_URL=https://sepolia.infura.io/v3/YOUR_KEY
+NEXT_PUBLIC_FHEVM_GATEWAY_URL=https://gateway.sepolia.zama.ai
+
+NEXT_PUBLIC_SEAL_GOVERNOR_ADDRESS=0x...
+NEXT_PUBLIC_SEAL_TALLY_ADDRESS=0x...
+NEXT_PUBLIC_SEAL_TOKEN_ADDRESS=0x...
+
+DEPLOYER_PRIVATE_KEY=0x...
+```
+
+### Deploy sequence
+
+```bash
+cd contracts
+npm install
+
+npx hardhat run scripts/deploy.ts --network fhevm_sepolia
+# Output:
+# SealToken deployed:    0x...
+# SealTally deployed:    0x...
+# SealGovernor deployed: 0x...
+
+# Mint tokens and create demo proposals
+npx hardhat run scripts/seed.ts --network fhevm_sepolia
+
+cd ../frontend
+npm install
+npm run dev
+```
+
+---
+
+## 21. Sponsor Alignment
+
+| Sponsor | How SealFi uses their technology | Why they care |
+|---|---|---|
+| **Zama** | fhEVM is the entire tallying engine. `euint8` encrypted vote direction, `euint128` sealed tallies, `FHE.eq` + `FHE.select` for routing weight to correct tally without revealing direction, Gateway async decryption at close. | Confidential voting is one of Zama's primary showcases — but nobody has built it for DAO governance with real proposal execution. |
+| **Starknet** | Confidential voting is explicitly listed in their privacy track prize criteria. SealFi is a direct implementation. | They want privacy-preserving governance demonstrated on EVM. |
+| **Filecoin / Protocol Labs** | Sealed proposal history archived to Filecoin — proposal text, voter addresses (not directions), execution calldata stored immutably for governance audit. | Verifiable, tamper-proof governance records. |
+| **Ethereum Foundation** | SealFi runs on Ethereum Sepolia. It is the first governance protocol that makes vote direction private at the EVM level — a new primitive for DAO tooling on Ethereum. | New governance primitive for Ethereum's DAO ecosystem. |
+
+---
+
+## 22. README Selling Points
+
+*Paste verbatim into README.md:*
+
+---
+
+### Why SealFi exists
+
+Every DAO governance protocol publishes live vote tallies. `forVotes: 4,821,304`. `againstVotes: 1,203,901`. Updating every block. Visible to every whale, every vote buyer, every coordinated delegate.
+
+This live tally is the attack surface. Whales watch it and time their entry for maximum impact with minimum counter-opportunity. Vote buyers pay for votes and verify delivery by watching the tally update. Delegates signal alignment without committing early. The live tally turns DAO governance into a coordination game that insiders always win.
+
+SealFi seals the tally. Your vote is cast as an encrypted `euint8`. It accumulates into an encrypted `euint128` running total. Nobody — not whales, not vote buyers, not the protocol itself — can see the running count until the voting period ends. At close, the Zama Gateway decrypts the final result. The proposal passes or fails. The envelope opened once.
+
+### The stunt
+
+```solidity
+// OpenZeppelin Governor — full coordination surface
+uint256 public forVotes;      // 4,821,304 — whales time their strike here
+uint256 public againstVotes;  // 1,203,901 — buyers verify delivery here
+uint256 public abstainVotes;  // 94,021    — delegates signal here
+
+// SealFi — sealed until close
+euint128 internal _forVotes;      // [sealed] — null during voting
+euint128 internal _againstVotes;  // [sealed] — null during voting
+euint128 internal _abstainVotes;  // [sealed] — null during voting
+```
+
+Three variable declarations. Last-minute coordination impossible. Vote buying market collapses. Strategic signalling blind.
+
+### How the vote direction is sealed
+
+```solidity
+// User votes FOR — direction is encrypted, weight is plaintext
+euint8 encVote = FHE.fromExternal(handle, proof); // verified ciphertext
+euint128 weight = FHE.asEuint128(voterBalance);   // plaintext token balance
+
+// FHE routes weight to correct tally without revealing direction
+ebool isFor = FHE.eq(encVote, FHE.asEuint8(1));
+_forVotes   = FHE.add(_forVotes, FHE.select(isFor, weight, FHE.asEuint128(0)));
+// Nobody sees which tally moved or by how much
+```
+
+One line of Solidity. The vote direction is never revealed — not during voting, not after. Only the aggregate result (total FOR, AGAINST, ABSTAIN) is published at close.
+
+### Stack
+
+**Contracts:** Solidity 0.8.24 · Zama fhEVM (`euint8`, `euint128`, TFHE operators, Gateway callback) · OpenZeppelin ERC20Votes · Hardhat
+
+**Frontend:** Next.js 14 · TypeScript · Wagmi · Viem · fhEVM.js SDK · Space Grotesk + Space Mono · Tailwind CSS · Stitch MCP
+
+**Networks:** Ethereum Sepolia with Zama fhEVM executor
+
+---
+
+## 23. MVP Scope
+
+### In scope
+
+- [ ] `SealGovernor.sol` — proposals, sealed voting, tally request, execution
+- [ ] `SealTally.sol` — encrypted tally accumulation, Gateway decryption
+- [ ] `SealToken.sol` — ERC20Votes governance token
+- [ ] Hardhat deploy + seed scripts (proposals, token distribution)
+- [ ] Landing page with live/closed proposal comparison
+- [ ] Proposals list — active `[sealed]`, closed revealed
+- [ ] Vote page — three-button vote selector, encrypted submission
+- [ ] `SealedValue` component — `[sealed]` during active, number after close
+- [ ] `CountdownTimer` component — live countdown to proposal close
+- [ ] Stitch MCP used for all page generation
+- [ ] Live demo: active proposal → cast vote → tally still `[sealed]` → close → reveal
+
+### Out of scope (V2)
+
+- Confidential token balances (ConfidentialERC20 for SEAL token)
+- Individual vote direction reveal to voter (post-close)
+- Delegation with encrypted delegation amounts
+- Multi-target proposal execution
+- Timelock controller
+- Quadratic voting
+- Filecoin archival integration
+- Governance dashboard with historical analytics
+
+### Risks and mitigations
+
+| Risk | Mitigation |
+|---|---|
+| Gateway async delay means proposal close is not instant | Expected — document as feature. Close triggers decryption request. Result arrives within ~10 seconds. |
+| Voter weight is public (token balance visible) | Documented intentional trade-off in SealToken.sol. Vote DIRECTION is what's sealed. Weight privacy is a V2 concern with ConfidentialERC20. |
+| Voting period too long for demo | Seed a proposal with 5-minute voting period on testnet for demo |
+| fhEVM gas costs for FHE.select × 3 per vote | Benchmarked acceptable. Document the cost. |
+
+---
+
+## 24. Demo Script (5 min)
+
+### Setup
+
+Two browsers: Alice (voter) and Bob (whale trying to coordinate). Testnet proposal with 5-minute voting period. 30 seconds remaining when demo starts. Both have SEAL tokens. Three other pre-seeded votes already cast.
+
+---
+
+### Step 1 — Show the problem on Snapshot/Compound (30 sec)
+
+Open any live Compound or Snapshot proposal. Show the live tally: `FOR: 4.8M · AGAINST: 1.2M`.
+
+"This is a live DAO vote right now. Every whale, every vote buyer, every coordinated delegate can see this number. They know the proposal is winning by 3.6M. Bob has 2M tokens. He knows if he votes AGAINST in the last 30 seconds, the proposal fails. The live tally is the weapon."
+
+---
+
+### Step 2 — Show SealFi's active proposal (30 sec)
+
+Open SealFi proposal #3. Show: `FOR: [sealed] · AGAINST: [sealed] · ABSTAIN: [sealed]`. Countdown: `0:04:12 remaining`.
+
+"This is SealFi. Same proposal. Same votes being cast. 847 addresses have voted. We know 847 people voted — we don't know what they said. Bob has 2M tokens. He cannot see whether the proposal is winning or losing. He cannot calculate whether his vote is decisive. He votes blind."
+
+---
+
+### Step 3 — Alice votes (1 min)
+
+Alice opens the vote page. Selects `FOR`. Clicks Cast Sealed Vote.
+
+Frontend encrypts vote direction `1` (FOR) using fhEVM SDK. Sends ciphertext + proof to `SealGovernor.castVote`.
+
+Transaction confirms. Show: `FOR: [sealed] · AGAINST: [sealed] · ABSTAIN: [sealed]`. Voter count: 848.
+
+"Alice voted FOR. 500,000 tokens. The tally did not move visibly. Bob is watching this page. He sees 848 voters. He still cannot see the tally. He has no idea if Alice's 500K tipped the balance."
+
+---
+
+### Step 4 — Voting period closes (2 min)
+
+Countdown hits zero. Call `requestTally(proposalId)`.
+
+State changes to TALLYING. Gateway decryption request submitted.
+
+Wait ~5 seconds.
+
+Gateway calls `fulfillTally`. Numbers appear:
+
+`FOR: 2,104,221 · AGAINST: 891,044 · ABSTAIN: 112,003`
+
+State: SUCCEEDED. `TallyRevealed` event emitted.
+
+"The envelope opened. FOR wins by 1.2M. The tally was accumulating the entire time — in encrypted space. Nobody saw this number until this moment. Not Alice. Not Bob. Not us. The Gateway decrypted it once, at close."
+
+---
+
+### Step 5 — Execute the proposal (30 sec)
+
+Call `SealGovernor.execute(3)`. Target contract called. State: EXECUTED.
+
+Open the contract on Etherscan. Show the `SealTally` contract — the tally variables during voting showed as encrypted handles. Show the `TallyRevealed` event — the reveal happened exactly once.
+
+"Three variable type changes. `uint256 public` → `euint128 internal`. The entire coordination surface for last-minute whale attacks, vote buying markets, and delegate signalling is gone. Not mitigated. Structurally impossible."
+
+---
+
+*SEALFI — PRD v1.0 — PL Genesis: Frontiers of Collaboration Hackathon*
+*Sponsors: Zama · Starknet · Filecoin · Ethereum Foundation*
+*Contracts: SealGovernor · SealTally · SealToken*
+*Stack: Next.js 14 · Solidity 0.8.24 · fhEVM · Space Grotesk · Space Mono · Stitch MCP*
+*Theme: Yellow #FFE500 + Black #0A0A0A · Brutalist Minimalist · Zero Gradients*
+*The signature: [sealed] during voting · numbers revealed once at close*
+*Folders: frontend/ · contracts/*
