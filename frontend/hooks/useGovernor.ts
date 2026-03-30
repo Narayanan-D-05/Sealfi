@@ -33,6 +33,8 @@ export function useProposal(id: number) {
         forVotes: Number(data[5]),
         againstVotes: Number(data[6]),
         abstainVotes: Number(data[7]),
+        target: "0x0000000000000000000000000000000000000000",
+        callData: "0x",
         tallyRequested: false,
         executed: false,
       }
@@ -44,7 +46,7 @@ export function useProposal(id: number) {
 export function useCastVote() {
   const { writeContract, isPending } = useWriteContract();
 
-  const castVote = async (proposalId: number, encVote: bigint, proof: `0x${string}`) => {
+  const castVote = async (proposalId: number, encVote: `0x${string}`, proof: `0x${string}`) => {
     return writeContract({
       address: CONTRACTS.sealGovernor as `0x${string}`,
       abi: SealGovernorABI,

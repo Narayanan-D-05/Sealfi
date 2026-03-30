@@ -7,6 +7,7 @@ import { SealedValue } from "@/components/ui/SealedValue";
 import { CountdownTimer } from "@/components/ui/CountdownTimer";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useVote, VoteDirection } from "@/hooks/useVote";
+import { useCastVote } from "@/hooks/useGovernor";
 import { ProposalState } from "@/hooks/useProposals";
 
 // Demo proposal data
@@ -55,15 +56,23 @@ function VoteButton({
 export default function VotePage() {
   const params = useParams();
   const proposalId = Number(params.id);
-  const { selectedVote, selectVote, canSubmit } = useVote();
+  const { selectedVote, selectVote, canSubmit, encryptVote, sealingState, getSealingMessage, error } = useVote();
+  const { castVote, isPending } = useCastVote();
   const [hasVoted, setHasVoted] = useState(false);
 
-  const handleCastVote = () => {
-    // In production, this would:
-    // 1. Encrypt the vote using fhevmjs
-    // 2. Send the transaction to the contract
-    // 3. Wait for confirmation
-    setHasVoted(true);
+  const handleCastVote = async () => {
+    if (!selectedVote) return;
+    
+    const encrypted = await encryptVote(selectedVote);
+    // encryptVote already updates the sealingState to "error" if it fails
+    if (!encrypted) return;
+    
+    try {
+      await castVote(proposalId, encrypted.ciphertext, encrypted.proof);
+      setHasVoted(true);
+    } catch (err) {
+      console.error("Failed to cast vote:", err);
+    }
   };
 
   if (hasVoted) {
@@ -175,15 +184,16 @@ export default function VotePage() {
 
             <button
               onClick={handleCastVote}
-              disabled={!canSubmit}
+              disabled={!canSubmit || isPending || sealingState !== "idle"}
               className={`w-full py-4 font-grotesk font-bold uppercase tracking-wider transition-colors ${
-                canSubmit
+                canSubmit && !isPending && sealingState === "idle"
                   ? "bg-yellow text-black hover:bg-white"
                   : "bg-gray-border text-gray cursor-not-allowed"
               }`}
             >
-              Cast Sealed Vote
+              {isPending ? "DEPOSITING INTO ENVELOPE..." : sealingState !== "idle" ? getSealingMessage() : "Cast Sealed Vote"}
             </button>
+            {error && <p className="font-mono text-white mt-4">{error}</p>}
           </div>
         </div>
       </div>

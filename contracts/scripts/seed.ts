@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const [deployer, voter1, voter2] = await ethers.getSigners();
   
   // Read deployment addresses
   const deploymentPath = path.join(__dirname, "deployment.json");
@@ -47,6 +47,10 @@ async function main() {
     "Increase treasury allocation to 12% of protocol fees"
   ];
   
+  // NOTE: If running on a public testnet (like fhevm_sepolia), evm_increaseTime will fail.
+  // The PRD requests distinct proposal states (Closed, Active 1 day left, Active 2 days left).
+  // Without the ability to change the smart contract constants, we simulate time where possible.
+  
   // Create proposals
   for (let i = 0; i < descriptions.length; i++) {
     const tx = await sealGovernor.propose(
@@ -56,6 +60,55 @@ async function main() {
     );
     await tx.wait();
     console.log(`Created proposal #${i + 1}: ${descriptions[i]}`);
+    
+    // Attempt to shift time so they end up staggerred (1 day apart)
+    try {
+      await ethers.provider.send("evm_increaseTime", [24 * 60 * 60]); // 1 day
+      await ethers.provider.send("evm_mine", []);
+      console.log("  Successfully fast-forwarded time by 1 day.");
+    } catch (e) {
+      // Ignore if networking doesn't allow time shifting
+      console.log("  Time shifting not supported on this network. State will remain pending/active.");
+    }
+  }
+
+  // One final time advance to ensure Proposal 1 crosses its voteEnd and becomes Closed
+  try {
+    await ethers.provider.send("evm_increaseTime", [24 * 60 * 60]); // +1 day
+    await ethers.provider.send("evm_mine", []);
+    console.log("Successfully fast-forwarded final day. Proposal 1 is now CLOSED.");
+  } catch (e) {
+    // Ignore
+  }
+
+  // Cast mock encrypted votes if fhevmjs is installed
+  try {
+    const fhevmjs = await import("fhevmjs");
+    console.log("fhevmjs found. Attempting to cast mock votes...");
+    
+    const fhevmInstance = await fhevmjs.createInstance({
+      chainId: (await ethers.provider.getNetwork()).chainId,
+      networkUrl: ethers.provider._getConnection().url,
+      gatewayUrl: "https://gateway.sepolia.zama.ai",
+    });
+
+    // Encrypt a FOR vote (1)
+    console.log("Encrypting a FOR vote...");
+    const encryptedFor = await fhevmInstance.encrypt8(1n);
+
+    // Cast vote on Proposal 3 (the last one)
+    console.log("Casting vote on Proposal 3...");
+    const voteTx = await sealGovernor.castVote(
+      3,
+      encryptedFor.ciphertext,
+      encryptedFor.proof
+    );
+    await voteTx.wait();
+    console.log("Successfully cast encrypted vote on Proposal 3!");
+
+  } catch (err) {
+    console.log("fhevmjs not installed or encryption failed. Skipping mock encrypted votes.");
+    console.log("To cast mock votes in seed.ts, please 'npm install fhevmjs'.");
   }
   
   console.log("Seeding complete!");

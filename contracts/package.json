@@ -17,6 +17,8 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "fhevm": "^0.6.0"
+    "@fhevm/hardhat-plugin": "^0.4.2",
+    "fhevm": "^0.6.0",
+    "fhevmjs": "^0.6.0"
   }
 }
