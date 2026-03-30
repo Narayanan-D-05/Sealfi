@@ -1,0 +1,22 @@
+{
+  "name": "sealfi-contracts",
+  "version": "1.0.0",
+  "description": "SealFi - Confidential DAO Governance Contracts",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "deploy": "npx hardhat run scripts/deploy.ts --network fhevm_sepolia",
+    "seed": "npx hardhat run scripts/seed.ts --network fhevm_sepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@types/node": "^20.12.0",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "fhevm": "^0.6.0"
+  }
+}
