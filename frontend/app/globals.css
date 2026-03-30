@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --black: #0A0A0A;
+  --yellow: #FFE500;
+  --yellow-dim: #FFE50020;
+  --white: #F5F5F5;
+  --gray: #888888;
+  --border: #1E1E1E;
+}
+
+@layer base {
+  * {
+    @apply border-gray-border;
+  }
+  
+  body {
+    @apply bg-black text-white;
+  }
+}
+
+@layer components {
+  .heading-xl {
+    @apply font-grotesk text-[clamp(48px,8vw,96px)] font-extrabold uppercase tracking-tight leading-none;
+  }
+  
+  .heading-lg {
+    @apply font-grotesk text-4xl font-bold uppercase;
+  }
+  
+  .label {
+    @apply font-grotesk text-xs font-bold tracking-widest uppercase;
+  }
+  
+  .body {
+    @apply font-grotesk text-base font-normal leading-relaxed;
+  }
+  
+  .mono {
+    @apply font-mono text-sm;
+  }
+  
+  .sealed {
+    @apply font-mono text-sm text-yellow;
+  }
+  
+  .btn-primary {
+    @apply bg-yellow text-black font-grotesk font-bold uppercase tracking-wider px-8 py-4 
+           hover:bg-white transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply border border-yellow text-yellow font-grotesk font-bold uppercase tracking-wider 
+           px-8 py-4 hover:bg-yellow hover:text-black transition-colors duration-200;
+  }
+}
