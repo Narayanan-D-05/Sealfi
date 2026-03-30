@@ -6,7 +6,6 @@ package-lock.json (ignore if you want yarn/pnpm or just to keep repository small
 # Environment Variables
 *.env
 *.env.*
-*.env.example
 
 # Hardhat
 contracts/artifacts/
