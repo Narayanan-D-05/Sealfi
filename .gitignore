@@ -4,11 +4,9 @@ package-lock.json (ignore if you want yarn/pnpm or just to keep repository small
 # actually, keeping package-lock.json is best practice.
 
 # Environment Variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+*.env
+*.env.*
+*.env.example
 
 # Hardhat
 contracts/artifacts/
