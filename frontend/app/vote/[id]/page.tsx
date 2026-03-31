@@ -1,202 +1,243 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
-import { Navbar } from "@/components/layout/Navbar";
-import { SealedValue } from "@/components/ui/SealedValue";
-import { CountdownTimer } from "@/components/ui/CountdownTimer";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { useVote, VoteDirection } from "@/hooks/useVote";
-import { useCastVote } from "@/hooks/useGovernor";
+import { useMemo, useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { SealedValue } from "@/components/proposals/SealedValue";
+import { cn } from "@/lib/utils";
+import { Shield, Clock, Users, ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { useProposal, useCastVote } from "@/hooks/useGovernor";
+import { useVote, type VoteDirection } from "@/hooks/useVote";
 import { ProposalState } from "@/hooks/useProposals";
-
-// Demo proposal data
-const DEMO_PROPOSAL = {
-  id: 3,
-  title: "Increase treasury allocation to 12%",
-  description:
-    "This proposal increases the protocol treasury allocation from 8% to 12% of all protocol fees. Funds will be used for grants, security audits, and ecosystem development initiatives.\n\nThe increased allocation will be automatically directed to the treasury contract and managed by the DAO through subsequent proposals.",
-  proposer: "0x3f...a912",
-  voteStart: Math.floor(Date.now() / 1000) - 86400,
-  voteEnd: Math.floor(Date.now() / 1000) + 172800,
-  state: ProposalState.ACTIVE,
-  voterCount: 847,
-  votingPower: 500000,
-};
-
-function VoteButton({
-  direction,
-  selected,
-  onClick,
-}: {
-  direction: VoteDirection;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  const labels: Record<VoteDirection, string> = {
-    for: "FOR",
-    against: "AGAINST",
-    abstain: "ABSTAIN",
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 py-8 px-4 font-grotesk font-bold text-lg uppercase tracking-wider transition-all ${
-        selected
-          ? "border-2 border-yellow text-yellow"
-          : "border border-gray-border text-gray hover:border-white hover:text-white"
-      }`}
-    >
-      {labels[direction]}
-    </button>
-  );
-}
+import Link from "next/link";
 
 export default function VotePage() {
-  const params = useParams();
-  const proposalId = Number(params.id);
-  const { selectedVote, selectVote, canSubmit, encryptVote, sealingState, getSealingMessage, error } = useVote();
-  const { castVote, isPending } = useCastVote();
-  const [hasVoted, setHasVoted] = useState(false);
+  const { id } = useParams();
+  const router = useRouter();
+  const proposalId = Number(id);
+  
+  const { proposal, isLoading: isLoadingProposal } = useProposal(proposalId);
+  const { 
+    selectedVote, 
+    selectVote, 
+    sealingState, 
+    setSealingState,
+    getSealingMessage, 
+    encryptVote, 
+    isReady: isFhevmReady,
+    error: encryptionError 
+  } = useVote();
+  
+  const { castVote, isPending: isSubmitting } = useCastVote();
+  const [txHash, setTxHash] = useState<string | null>(null);
 
-  const handleCastVote = async () => {
-    if (!selectedVote) return;
-    
-    const encrypted = await encryptVote(selectedVote);
-    // encryptVote already updates the sealingState to "error" if it fails
-    if (!encrypted) return;
-    
+  const handleVoteSubmission = async () => {
+    if (!selectedVote || !isFhevmReady) return;
+
     try {
-      await castVote(proposalId, encrypted.ciphertext, encrypted.proof);
-      setHasVoted(true);
+      // 1. Encrypt the vote
+      const encrypted = await encryptVote(selectedVote);
+      if (!encrypted) return;
+
+      // 2. Submit to blockchain
+      setSealingState("submitting");
+      const hash = await castVote(proposalId, encrypted.ciphertext, encrypted.proof);
+      setTxHash(hash || null);
+      setSealingState("confirmed");
+      
+      // Optional: redirect after success
+      // setTimeout(() => router.push('/proposals'), 4000);
     } catch (err) {
-      console.error("Failed to cast vote:", err);
+      console.error("Voting failed:", err);
+      // setSealingState("error"); occurs in useVote if encryption fails
     }
   };
 
-  if (hasVoted) {
+  if (isLoadingProposal) {
     return (
-      <main className="min-h-screen bg-black">
-        <Navbar />
-        <div className="pt-32 px-6">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="heading-lg mb-6">VOTE RECORDED</h2>
-            <p className="font-mono text-gray mb-8">
-              Your sealed vote was recorded. The tally remains sealed until{" "}
-              {new Date(DEMO_PROPOSAL.voteEnd * 1000).toLocaleString()}.
-            </p>
-            <a href="/proposals" className="btn-primary">
-              Back to Proposals
-            </a>
-          </div>
-        </div>
-      </main>
+      <div className="flex flex-col items-center justify-center min-h-screen font-mono text-xs uppercase opacity-50">
+        <Loader2 className="w-6 h-6 animate-spin mb-4" />
+        LOADING_SECURE_ENCLAVE...
+      </div>
     );
   }
 
+  if (!proposal) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen font-mono text-xs uppercase text-primary">
+        <AlertCircle className="w-8 h-8 mb-4" />
+        PROPOSAL_NOT_FOUND_OR_INVALID_ID
+        <Link href="/proposals" className="mt-8 text-black underline">BACK_TO_REGISTRY</Link>
+      </div>
+    );
+  }
+
+  const isActive = proposal.state === ProposalState.ACTIVE;
+  const isPending = proposal.state === ProposalState.PENDING;
+  const isClosed = !isActive && !isPending;
+
   return (
-    <main className="min-h-screen bg-black">
-      <Navbar />
+    <div className="container px-6 lg:px-12 py-20 max-w-full min-h-screen bg-white">
+      <Link href="/proposals" className="inline-flex items-center gap-2 font-mono text-[10px] font-black uppercase mb-12 hover:text-primary transition-colors">
+        <ArrowLeft className="w-3 h-3" /> BACK_TO_REGISTRY
+      </Link>
 
-      <div className="pt-24 pb-12 px-6">
-        <div className="max-w-4xl mx-auto">
-          {/* Proposal Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="font-mono text-gray">#{proposalId}</span>
-              <StatusBadge state={DEMO_PROPOSAL.state} />
-            </div>
-            <h1 className="heading-lg mb-4">{DEMO_PROPOSAL.title}</h1>
-            <div className="flex items-center gap-6 font-mono text-sm text-gray">
-              <span>Proposed by {DEMO_PROPOSAL.proposer}</span>
-              <span>Closes {new Date(DEMO_PROPOSAL.voteEnd * 1000).toLocaleString()}</span>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+        {/* LEFT COLUMN: INFORMATION */}
+        <div className="lg:col-span-12 xl:col-span-8 flex flex-col gap-12">
+          <div className="flex flex-col gap-4">
+             <span className="font-mono text-xs text-primary font-black uppercase tracking-[0.2em]">
+               {isActive ? "PROPOSAL_UNDER_SEAL" : "ARCHIVED_PROPOSAL"}
+             </span>
+             <h1 className="text-5xl md:text-7xl font-heading font-black tracking-tighter uppercase leading-[0.9] text-black">
+               {proposal.description.split('\n')[0]}
+             </h1>
           </div>
 
-          {/* Description */}
-          <div className="border border-gray-border p-6 mb-8">
-            <h3 className="label mb-4">DESCRIPTION</h3>
-            <p className="font-mono text-sm text-gray leading-relaxed whitespace-pre-line">
-              {DEMO_PROPOSAL.description}
-            </p>
-          </div>
-
-          {/* Current Tally */}
-          <div className="border border-gray-border p-6 mb-8">
-            <h3 className="label mb-4">CURRENT TALLY</h3>
-            <div className="grid grid-cols-3 gap-8 mb-4">
-              <div>
-                <span className="text-gray text-sm block mb-2">FOR</span>
-                <SealedValue value={undefined} />
-              </div>
-              <div>
-                <span className="text-gray text-sm block mb-2">AGAINST</span>
-                <SealedValue value={undefined} />
-              </div>
-              <div>
-                <span className="text-gray text-sm block mb-2">ABSTAIN</span>
-                <SealedValue value={undefined} />
-              </div>
+          <div className="flex flex-wrap gap-8 border-y-[3px] border-black py-10 font-mono text-[10px] text-black/60 uppercase font-black">
+            <div className="flex items-center gap-2">
+              <span className="text-black/30">PROPOSER:</span> {proposal.proposer.slice(0, 6)}...{proposal.proposer.slice(-4)}
             </div>
-            <p className="font-mono text-sm text-gray">
-              {DEMO_PROPOSAL.voterCount} addresses have voted
-            </p>
-            <p className="font-mono text-xs text-gray mt-2">
-              Tally reveals at close. Sealed until{" "}
-              {new Date(DEMO_PROPOSAL.voteEnd * 1000).toLocaleString()}.
-            </p>
-          </div>
-
-          {/* Cast Your Vote */}
-          <div className="border border-gray-border p-6">
-            <h3 className="label mb-4">CAST YOUR VOTE</h3>
-
-            <div className="mb-6">
-              <span className="text-gray text-sm block mb-2">Your voting power</span>
-              <span className="font-mono text-xl text-white">
-                {DEMO_PROPOSAL.votingPower.toLocaleString()} SEAL
+            <div className="flex items-center gap-2">
+              <span className="text-black/30">CLOSES:</span> {new Date(proposal.voteEnd * 1000).toLocaleString()}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-black/30">STATUS:</span> 
+              <span className={cn(isActive ? "text-green-600" : "text-primary")}>
+                {ProposalState[proposal.state]}
               </span>
             </div>
+          </div>
 
-            <div className="flex gap-4 mb-6">
-              <VoteButton
-                direction="for"
-                selected={selectedVote === "for"}
-                onClick={() => selectVote("for")}
-              />
-              <VoteButton
-                direction="against"
-                selected={selectedVote === "against"}
-                onClick={() => selectVote("against")}
-              />
-              <VoteButton
-                direction="abstain"
-                selected={selectedVote === "abstain"}
-                onClick={() => selectVote("abstain")}
-              />
+          <div className="flex flex-col gap-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-1 bg-primary" />
+              <h3 className="font-heading font-black text-xs text-black uppercase tracking-widest">SPECIFICATION</h3>
+            </div>
+            <div className="bg-[#fafafa] p-12 neo-border-thick neo-shadow-hard">
+               <p className="text-2xl font-heading font-bold text-black leading-tight italic uppercase">
+                 "{proposal.description}"
+               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: VOTING PANEL */}
+        <div className="lg:col-span-12 xl:col-span-4 flex flex-col gap-8">
+          <div className="bg-white neo-border-thick p-10 neo-shadow-hard flex flex-col gap-10 border-t-[12px] border-t-primary">
+            <div className="flex justify-between items-start">
+              <h2 className="text-4xl font-heading font-black uppercase tracking-tighter text-black">CAST_VOTE</h2>
+              <Shield className="w-6 h-6 text-primary" />
             </div>
 
-            <p className="font-mono text-xs text-gray mb-6">
-              Your vote is encrypted before it leaves your browser. Nobody can see how
-              you voted — not during voting, not after.
-            </p>
+            <div className="flex flex-col gap-10">
+              {/* CURRENT TALLY (SEALED) */}
+              <div className="flex flex-col gap-4">
+                 <div className="flex justify-between items-end">
+                   <span className="font-mono text-[9px] font-black text-black/40 uppercase tracking-widest">ENCRYPTED_TALLY</span>
+                   <div className="flex items-center gap-2 text-[9px] font-mono text-primary animate-pulse">
+                     <Clock className="w-3 h-3" />
+                     <span>LIVE_COUNT_MASKED</span>
+                   </div>
+                 </div>
+                 <div className="grid grid-cols-3 gap-0 border-[3px] border-black text-center">
+                    <div className="border-r-[3px] border-black p-4 flex flex-col gap-1">
+                      <span className="font-mono text-[8px] text-black/40 font-black">FOR</span>
+                      <SealedValue isSealed={isActive} className="text-sm font-black" />
+                    </div>
+                    <div className="border-r-[3px] border-black p-4 flex flex-col gap-1">
+                      <span className="font-mono text-[8px] text-black/40 font-black">AGST</span>
+                      <SealedValue isSealed={isActive} className="text-sm font-black" />
+                    </div>
+                    <div className="p-4 flex flex-col gap-1">
+                      <span className="font-mono text-[8px] text-black/40 font-black">ABS</span>
+                      <SealedValue isSealed={isActive} className="text-sm font-black" />
+                    </div>
+                 </div>
+              </div>
 
-            <button
-              onClick={handleCastVote}
-              disabled={!canSubmit || isPending || sealingState !== "idle"}
-              className={`w-full py-4 font-grotesk font-bold uppercase tracking-wider transition-colors ${
-                canSubmit && !isPending && sealingState === "idle"
-                  ? "bg-yellow text-black hover:bg-white"
-                  : "bg-gray-border text-gray cursor-not-allowed"
-              }`}
-            >
-              {isPending ? "DEPOSITING INTO ENVELOPE..." : sealingState !== "idle" ? getSealingMessage() : "Cast Sealed Vote"}
-            </button>
-            {error && <p className="font-mono text-white mt-4">{error}</p>}
+              {/* ACTION AREA */}
+              <div className="flex flex-col gap-6">
+                 <div className="flex justify-between font-heading font-black items-end uppercase text-[10px]">
+                   <span className="text-black/40">SELECT_DIRECTION</span>
+                   <span className="text-black">POWER: 12.4K SEAL</span>
+                 </div>
+                 
+                 <div className="flex flex-col gap-4">
+                    {(["for", "against", "abstain"] as VoteDirection[]).map((v) => (
+                      <button 
+                        key={v} 
+                        onClick={() => selectVote(v)}
+                        disabled={!isActive || sealingState !== "idle"}
+                        className={cn(
+                          "w-full p-6 text-left font-heading font-black uppercase transition-all neo-border-thick text-sm",
+                          selectedVote === v 
+                            ? "bg-primary text-white translate-x-[-2px] translate-y-[-2px] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]" 
+                            : "bg-white text-black/40 hover:text-black hover:bg-[#fafafa]"
+                        )}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                 </div>
+              </div>
+
+              {/* SUBMISSION STATUS */}
+              {sealingState === "confirmed" ? (
+                <div className="p-8 bg-green-50 border-[3px] border-green-600 text-center font-heading font-black text-green-600 uppercase flex flex-col gap-2">
+                  <span className="text-sm">VOTE_SUCCESSFULLY_SEALED</span>
+                  {txHash && (
+                    <a 
+                      href={`https://sepolia.etherscan.io/tx/${txHash}`} 
+                      target="_blank" 
+                      className="text-[9px] font-mono underline opacity-60"
+                    >
+                      VIEW_ON_ETHERSCAN
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={handleVoteSubmission} 
+                    disabled={!selectedVote || sealingState !== "idle" || !isFhevmReady || !isActive} 
+                    className={cn(
+                      "w-full py-6 font-heading font-black text-lg uppercase tracking-tight transition-all",
+                      (!selectedVote || sealingState !== "idle" || !isFhevmReady || !isActive)
+                        ? "bg-black/10 text-black/20 border-black/10 neo-border-thick cursor-not-allowed"
+                        : "bg-black text-white neo-shadow-hard hover:bg-primary hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2"
+                    )}
+                  >
+                    {sealingState === "submitting" ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <Loader2 className="w-5 h-5 animate-spin" /> DEPOSITING...
+                      </div>
+                    ) : sealingState === "sealing" ? (
+                      "ENCRYPTING_BALLOT..."
+                    ) : !isFhevmReady ? (
+                      "INITIALIZING_FHE..."
+                    ) : !isActive ? (
+                      "VOTING_CLOSED"
+                    ) : (
+                      "CAST_SEALED_VOTE"
+                    )}
+                  </button>
+                  
+                  {encryptionError && (
+                    <span className="font-mono text-[9px] text-primary text-center font-black uppercase">
+                      Error: {encryptionError}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 px-6 py-4 bg-[#fafafa] neo-border-thick font-mono text-[9px] font-black uppercase">
+            <Users className="w-4 h-4 text-primary" />
+            <span>PARTICIPATION_STRENGTH: HIGH (847 VOTES)</span>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

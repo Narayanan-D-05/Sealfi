@@ -1,6 +1,6 @@
 "use client";
 
-import { useReadContract, useWriteContract } from "wagmi";
+import { useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { SealGovernorABI, CONTRACTS } from "@/lib/contracts";
 import type { Proposal, ProposalState } from "@/hooks/useProposals";
 
@@ -11,7 +11,39 @@ export function useProposals() {
     functionName: "proposalCount",
   });
 
-  return { proposalCount: proposalCount ? Number(proposalCount) : 0 };
+  const count = proposalCount ? Number(proposalCount) : 0;
+
+  const { data: results, isLoading } = useReadContracts({
+    contracts: Array.from({ length: count }).map((_, i) => ({
+      address: CONTRACTS.sealGovernor as `0x${string}`,
+      abi: SealGovernorABI as any,
+      functionName: "getProposal",
+      args: [BigInt(i + 1)],
+    })),
+  });
+
+  const proposals: Proposal[] = results
+    ? results.map((res: any, i: number) => {
+        const d = res.result as any;
+        return {
+          id: i + 1,
+          proposer: d[0],
+          description: d[1],
+          voteStart: Number(d[2]),
+          voteEnd: Number(d[3]),
+          state: d[4] as ProposalState,
+          forVotes: Number(d[5]),
+          againstVotes: Number(d[6]),
+          abstainVotes: Number(d[7]),
+          target: "0x0000000000000000000000000000000000000000",
+          callData: "0x",
+          tallyRequested: false,
+          executed: false,
+        };
+      })
+    : [];
+
+  return { proposals, isLoading };
 }
 
 export function useProposal(id: number) {
@@ -44,16 +76,34 @@ export function useProposal(id: number) {
 }
 
 export function useCastVote() {
-  const { writeContract, isPending } = useWriteContract();
+  const { writeContractAsync, isPending } = useWriteContract();
 
   const castVote = async (proposalId: number, encVote: `0x${string}`, proof: `0x${string}`) => {
-    return writeContract({
+    return writeContractAsync({
       address: CONTRACTS.sealGovernor as `0x${string}`,
       abi: SealGovernorABI,
       functionName: "castVote",
-      args: [BigInt(proposalId), encVote, proof],
+      args: [BigInt(proposalId), BigInt(encVote), proof],
     });
   };
 
   return { castVote, isPending };
+}
+export function useCreateProposal() {
+  const { writeContractAsync, isPending } = useWriteContract();
+
+  const createProposal = async (description: string) => {
+    return writeContractAsync({
+      address: CONTRACTS.sealGovernor as `0x${string}`,
+      abi: SealGovernorABI,
+      functionName: "propose",
+      args: [
+        description,
+        "0x0000000000000000000000000000000000000000", // Target
+        "0x", // callData
+      ],
+    });
+  };
+
+  return { createProposal, isPending };
 }

@@ -1,229 +1,206 @@
 "use client";
 
-import { Navbar } from "@/components/layout/Navbar";
-import { SealedValue } from "@/components/ui/SealedValue";
-import { CountdownTimer } from "@/components/ui/CountdownTimer";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { motion } from "framer-motion";
+import { ProposalCard } from "@/components/proposals/ProposalCard";
+import { ShieldAlert, ShieldCheck, Activity } from "lucide-react";
+import { SealedValue } from "@/components/proposals/SealedValue";
+import { useProposals } from "@/hooks/useGovernor";
 import { ProposalState } from "@/hooks/useProposals";
+import Link from "next/link";
 
-// Demo proposals data
-const DEMO_PROPOSALS = [
-  {
-    id: 3,
-    title: "Increase treasury allocation to 12%",
-    proposer: "0x3f...a912",
-    voteEnd: Math.floor(Date.now() / 1000) + 172800, // 2 days
-    state: ProposalState.ACTIVE,
-    voterCount: 847,
-  },
-  {
-    id: 2,
-    title: "Add HBAR as accepted collateral",
-    proposer: "0x7a...c031",
-    voteEnd: Math.floor(Date.now() / 1000) + 86400, // 1 day
-    state: ProposalState.ACTIVE,
-    voterCount: 1203,
-  },
-  {
-    id: 1,
-    title: "Adjust protocol fee from 0.30% to 0.25%",
-    proposer: "0x1b...f220",
-    voteEnd: Math.floor(Date.now() / 1000) - 86400, // closed
-    state: ProposalState.SUCCEEDED,
-    forVotes: 2104221,
-    againstVotes: 891044,
-    abstainVotes: 112003,
-    voterCount: 1547,
-  },
-];
+export default function Home() {
+  const { proposals, isLoading } = useProposals();
 
-function ProposalRow({ proposal }: { proposal: typeof DEMO_PROPOSALS[0] }) {
-  const isActive = proposal.state === ProposalState.ACTIVE;
+  // Map real proposals to UI format
+  const mappedProposals = proposals.map((p, idx) => {
+    const isClosed = [ProposalState.SUCCEEDED, ProposalState.DEFEATED, ProposalState.EXECUTED, ProposalState.TALLYING].includes(p.state);
+    const totalVotes = p.forVotes + p.againstVotes + p.abstainVotes;
+    
+    // Calculate time left
+    const now = Math.floor(Date.now() / 1000);
+    const diff = p.voteEnd - now;
+    let timeLeft = "CLOSED";
+    if (!isClosed && diff > 0) {
+      const days = Math.floor(diff / 86400);
+      const hours = Math.floor((diff % 86400) / 3600);
+      timeLeft = `${days}d ${hours}h left`;
+    }
+
+    const colors = ["#FACC15", "#4ADE80", "#60A5FA", "#EC4899", "#8B5CF6"];
+    
+    return {
+      id: p.id.toString(),
+      title: p.description.split('\n')[0] || `Proposal #${p.id}`,
+      description: p.description,
+      status: p.state === ProposalState.ACTIVE ? "ACTIVE" as const : "PASSED" as const, 
+      category: "Protocol",
+      votes: totalVotes > 1000000 ? `${(totalVotes / 1000000).toFixed(1)}M` : totalVotes.toLocaleString(),
+      timeLeft,
+      color: colors[idx % colors.length]
+    };
+  });
+
+  // Only show first 3 for home
+  const topProposals = mappedProposals.slice(0, 3);
 
   return (
-    <div className="border-b border-gray-border py-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="font-mono text-gray">#{proposal.id}</span>
-            <h3 className="font-grotesk text-lg font-medium">{proposal.title}</h3>
-          </div>
-          <p className="font-mono text-sm text-gray mb-4">
-            Proposed by {proposal.proposer}
-          </p>
-
-          <div className="flex flex-wrap items-center gap-6 text-sm">
-            {isActive ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray">FOR:</span>
-                  <SealedValue value={undefined} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray">AGAINST:</span>
-                  <SealedValue value={undefined} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray">ABSTAIN:</span>
-                  <SealedValue value={undefined} />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray">FOR:</span>
-                  <SealedValue value={proposal.forVotes} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray">AGAINST:</span>
-                  <SealedValue value={proposal.againstVotes} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray">ABSTAIN:</span>
-                  <SealedValue value={proposal.abstainVotes} />
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col items-end gap-3">
-          <StatusBadge state={proposal.state} />
-          {isActive ? (
-            <div className="font-mono text-sm text-gray">
-              <CountdownTimer targetDate={proposal.voteEnd} />
+    <div className="flex flex-col min-h-screen bg-white text-black">
+      {/* HERO SECTION */}
+      <section className="pt-32 pb-40 px-6 lg:px-20 text-center border-b-[4px] border-black bg-white">
+        <div className="container max-w-7xl mx-auto">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="space-y-10"
+          >
+            <div className="inline-flex items-center gap-3 bg-[#E41E26] text-white px-5 py-1.5 rounded-full font-mono text-[11px] font-black uppercase mb-6 neo-border-thick neo-shadow-hard">
+              <Activity className="w-4 h-4 animate-pulse" /> NETWORK_STATUS: SECURE_ENCLAVE_LIVE
             </div>
-          ) : (
-            <span className="font-mono text-sm text-gray">CLOSED</span>
-          )}
-          {isActive && (
-            <a
-              href={`/vote/${proposal.id}`}
-              className="border border-yellow text-yellow px-4 py-2 font-grotesk text-xs uppercase tracking-wider hover:bg-yellow hover:text-black transition-colors"
-            >
-              Vote
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-export default function LandingPage() {
-  return (
-    <main className="min-h-screen bg-black">
-      <Navbar />
+            <h1 className="group font-heading font-black text-6xl md:text-[120px] leading-[0.8] tracking-tighter text-black uppercase drop-shadow-[6px_6px_0px_#E41E26] transition-all duration-300">
+              <span className="hover:text-[#FACC15] transition-colors cursor-default block mb-4">EVERY VOTE</span>
+              <span className="hover:text-[#FACC15] transition-colors cursor-default block">IS <span className="text-[#E41E26] group-hover:text-[#FACC15]">SEALED.</span></span>
+            </h1>
+            
+            <p className="font-heading font-bold text-xl md:text-2xl max-w-4xl mx-auto text-black/80 leading-tight uppercase tracking-tight italic">
+              DAOs publish live tallies. Whales watch the trend and time their strike. <br className="hidden md:block" />
+              SealFi seals the envelope. It opens once, when voting ends. Not before.
+            </p>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="heading-xl mb-8">
-            EVERY VOTE
-            <br />
-            IS SEALED.
-          </h1>
-          <p className="body max-w-2xl text-gray mb-12">
-            DAOs publish live tallies. Whales watch the trend and time their strike.
-            Vote buyers verify delivery. SealFi seals the envelope. It opens once,
-            when voting ends. Not before.
-          </p>
-          <a href="/proposals" className="btn-primary inline-block">
-            Launch Governance
-          </a>
+            <div className="flex flex-col md:flex-row justify-center gap-8 pt-10">
+              <Link href="/proposals" className="bg-black text-white px-16 py-6 rounded-full font-heading font-black text-sm uppercase neo-shadow-hard hover:bg-[#E41E26] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center">
+                LAUNCH_APP
+              </Link>
+              <button className="bg-white text-black px-16 py-6 rounded-full font-heading font-black text-sm uppercase neo-border-thick hover:bg-black hover:text-white transition-all shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                READ_SPECS
+              </button>
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Proof Section - Side by Side Comparison */}
-      <section className="py-20 px-6 border-y border-gray-border">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="heading-lg mb-12">PROOF.</h2>
-
-          <div className="grid md:grid-cols-2 gap-12">
-            {/* Compound Governor */}
-            <div className="border border-gray-border p-8">
-              <h3 className="label mb-6 text-gray">Compound Governor (Live)</h3>
-              <div className="space-y-4 font-mono">
-                <div className="flex justify-between">
-                  <span className="text-gray">FOR:</span>
-                  <span className="text-white">4,821,304</span>
+      {/* COMPARISON SECTION */}
+      <section className="py-32 px-6 lg:px-20 border-b-[4px] border-black bg-[#fafafa]">
+        <div className="container max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-[4px] border-black neo-shadow-hard">
+            {/* Standard DAO */}
+            <div className="p-12 border-b-[4px] md:border-b-0 md:border-r-[4px] border-black bg-white">
+              <div className="flex items-center gap-4 mb-10">
+                <div className="p-3 bg-red-600 border-[3px] border-black rounded-xl">
+                  <ShieldAlert className="w-6 h-6 text-white" />
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray">AGAINST:</span>
-                  <span className="text-white">1,203,901</span>
+                <div className="font-heading font-black text-2xl tracking-tighter uppercase">Standard Governor</div>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="flex justify-between items-end border-b-2 border-black/10 pb-4">
+                  <span className="font-mono text-[10px] text-black/40 uppercase">VOTES_FOR</span>
+                  <span className="font-mono text-3xl font-black">4.8M SEAL</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray">ABSTAIN:</span>
-                  <span className="text-white">94,021</span>
+                <div className="flex justify-between items-end border-b-2 border-black/10 pb-4">
+                  <span className="font-mono text-[10px] text-black/40 uppercase">VOTES_AGAINST</span>
+                  <span className="font-mono text-3xl font-black">1.2M SEAL</span>
+                </div>
+                <div className="p-4 bg-red-50 font-mono text-[10px] font-bold text-red-600 uppercase text-center border-2 border-red-200">
+                  ⚠️ REALTIME_LEAK_DETECTED: TRENDS_VISIBLE_TO_WHALES
                 </div>
               </div>
             </div>
 
             {/* SealFi */}
-            <div className="border border-yellow p-8">
-              <h3 className="label mb-6 text-yellow">SealFi (Same Proposal)</h3>
-              <div className="space-y-4 font-mono">
-                <div className="flex justify-between">
-                  <span className="text-gray">FOR:</span>
-                  <SealedValue value={undefined} />
+            <div className="p-12 bg-white">
+              <div className="flex items-center gap-4 mb-10">
+                <div className="p-3 bg-[#E41E26] border-[3px] border-black rounded-xl">
+                  <ShieldCheck className="w-6 h-6 text-white" />
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray">AGAINST:</span>
-                  <SealedValue value={undefined} />
+                <div className="font-heading font-black text-2xl tracking-tighter uppercase">SealFi Protocol</div>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="flex justify-between items-end border-b-2 border-black/10 pb-4">
+                  <span className="font-mono text-[10px] text-black/40 uppercase">VOTES_FOR</span>
+                  <SealedValue className="text-3xl font-black text-[#E41E26]" />
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray">ABSTAIN:</span>
-                  <SealedValue value={undefined} />
+                <div className="flex justify-between items-end border-b-2 border-black/10 pb-4">
+                  <span className="font-mono text-[10px] text-black/40 uppercase">VOTES_AGAINST</span>
+                  <SealedValue className="text-3xl font-black text-[#E41E26]" />
+                </div>
+                <div className="p-4 bg-green-50 font-mono text-[10px] font-bold text-green-600 uppercase text-center border-2 border-green-200">
+                  ✅ SECURED_BY_FHEVM: ENVELOPE_SEALED_UNTIL_CLOSE
                 </div>
               </div>
             </div>
           </div>
-
-          <p className="body mt-8 text-gray">
-            Both protocols are counting the same votes. Only one of them tells you the score.
-          </p>
         </div>
       </section>
 
-      {/* Active Proposals */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="heading-lg mb-12">ACTIVE PROPOSALS</h2>
-          <div className="border-t border-gray-border">
-            {DEMO_PROPOSALS.map((proposal) => (
-              <ProposalRow key={proposal.id} proposal={proposal} />
-            ))}
+      {/* DASHBOARD SECTION */}
+      <section className="py-32 px-6 lg:px-20 bg-white">
+        <div className="container max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-end gap-8 mb-20">
+            <div>
+              <h2 className="font-heading font-black text-5xl text-black uppercase tracking-tighter mb-4">
+                PROPOSAL_REGISTRY
+              </h2>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-[6px] bg-[#E41E26]" />
+                <p className="font-mono text-[11px] font-black text-black/40 uppercase tracking-[0.2rem]">CONFIDENTIAL_VOTING_ACTIVE</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4">
+              <Link href="/proposals" className="bg-black text-white px-8 py-4 rounded-full font-heading font-black text-xs uppercase neo-shadow-hard hover:bg-[#E41E26] transition-all">
+                ALL_PROPOSALS
+              </Link>
+            </div>
           </div>
-          <p className="body mt-8 text-gray">
-            Active proposals show [sealed]. Closed proposals reveal the tally.
-          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {isLoading ? (
+              <div className="col-span-3 text-center py-20 font-mono animate-pulse">FETCHING_BLOCKCHAIN_STATE...</div>
+            ) : topProposals.length > 0 ? (
+              topProposals.map((p) => (
+                <ProposalCard key={p.id} {...p} />
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-20 font-mono opacity-40">NO_ACTIVE_PROPOSALS_FOUND</div>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-20 px-6 border-t border-gray-border">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="heading-lg mb-12">HOW IT WORKS</h2>
-          <div className="grid md:grid-cols-5 gap-8">
+      {/* PROTOCOL STEPS */}
+      <section className="py-32 px-6 lg:px-20 border-t-[4px] border-black bg-[#fafafa]">
+        <div className="container max-w-7xl mx-auto">
+          <h2 className="font-heading font-black text-4xl mb-20 uppercase tracking-tighter">System Protocol</h2>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-0 border-[4px] border-black neo-shadow-hard bg-white">
             {[
-              "You vote. Direction is encrypted using Zama fhEVM.",
-              "Your vote accumulates into an encrypted tally.",
-              "Nobody sees the tally during voting. Not even the protocol.",
-              "When voting ends, the Gateway decrypts the final count.",
-              "Result executes. Envelope opened once.",
+              { num: "01", label: "CAST", desc: "You vote. Direction is encrypted using Zama fhEVM." },
+              { num: "02", label: "ACCUMULATE", desc: "Your vote accumulates into an encrypted tally." },
+              { num: "03", label: "SEAL", desc: "Nobody sees the tally during voting." },
+              { num: "04", label: "REVEAL", desc: "At end, Gateway decrypts the final count." },
+              { num: "05", label: "EXECUTE", desc: "Result executes automatically." },
             ].map((step, i) => (
-              <div key={i} className="flex flex-col">
-                <span className="font-mono text-yellow text-2xl mb-4">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <p className="font-mono text-sm text-gray leading-relaxed">
-                  {step}
-                </p>
+              <div key={i} className={`p-8 ${i !== 4 ? 'md:border-r-[4px]' : ''} border-b-[4px] md:border-b-0 border-black hover:bg-black hover:text-white transition-all group`}>
+                <div className="font-mono text-lg font-black mb-6 text-[#E41E26] group-hover:text-white">{step.num}</div>
+                <h4 className="font-heading font-black text-xl mb-4 uppercase leading-none">{step.label}</h4>
+                <p className="font-sans text-xs font-bold opacity-60 leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
-    </main>
+
+      <footer className="py-24 px-6 lg:px-20 border-t-[4px] border-black bg-white">
+        <div className="container max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
+          <div className="font-heading font-black text-3xl">SEAL<span className="text-[#E41E26]">FI.</span></div>
+          <div className="flex gap-12 font-mono text-[10px] font-black uppercase tracking-[0.3rem]">
+            <a href="#" className="hover:text-[#E41E26]">Twitter</a>
+            <a href="#" className="hover:text-[#E41E26]">Github</a>
+            <a href="#" className="hover:text-[#E41E26]">Docs</a>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }

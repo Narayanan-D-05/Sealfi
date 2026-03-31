@@ -1,186 +1,114 @@
 "use client";
 
 import { useState } from "react";
-import { Navbar } from "@/components/layout/Navbar";
-import { SealedValue } from "@/components/ui/SealedValue";
-import { CountdownTimer } from "@/components/ui/CountdownTimer";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ProposalCard } from "@/components/proposals/ProposalCard";
+import { cn } from "@/lib/utils";
+import { Plus } from "lucide-react";
+import { useProposals } from "@/hooks/useGovernor";
 import { ProposalState } from "@/hooks/useProposals";
-
-// Demo proposals data
-const DEMO_PROPOSALS = [
-  {
-    id: 3,
-    title: "Increase treasury allocation to 12%",
-    description: "This proposal increases the protocol treasury allocation from 8% to 12% of all protocol fees. Funds will be used for grants, audits, and ecosystem development.",
-    proposer: "0x3f...a912",
-    voteStart: Math.floor(Date.now() / 1000) - 86400,
-    voteEnd: Math.floor(Date.now() / 1000) + 172800,
-    state: ProposalState.ACTIVE,
-    voterCount: 847,
-  },
-  {
-    id: 2,
-    title: "Add HBAR as accepted collateral",
-    description: "Add Hedera (HBAR) as an accepted collateral type in the lending protocol. This will expand the range of assets users can borrow against.",
-    proposer: "0x7a...c031",
-    voteStart: Math.floor(Date.now() / 1000) - 172800,
-    voteEnd: Math.floor(Date.now() / 1000) + 86400,
-    state: ProposalState.ACTIVE,
-    voterCount: 1203,
-  },
-  {
-    id: 1,
-    title: "Adjust protocol fee from 0.30% to 0.25%",
-    description: "Reduce the protocol fee from 0.30% to 0.25% to remain competitive and attract more trading volume.",
-    proposer: "0x1b...f220",
-    voteStart: Math.floor(Date.now() / 1000) - 604800,
-    voteEnd: Math.floor(Date.now() / 1000) - 259200,
-    state: ProposalState.EXECUTED,
-    forVotes: 2104221,
-    againstVotes: 891044,
-    abstainVotes: 112003,
-    voterCount: 1547,
-  },
-];
-
-type FilterTab = "all" | "active" | "closed";
-
-function ProposalCard({ proposal }: { proposal: typeof DEMO_PROPOSALS[0] }) {
-  const isActive = proposal.state === ProposalState.ACTIVE;
-  const isClosed = !isActive;
-
-  return (
-    <div className="border border-gray-border p-6 hover:border-yellow transition-colors">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <span className="font-mono text-gray text-sm">#{proposal.id}</span>
-          <h3 className="font-grotesk text-xl font-medium mt-1">{proposal.title}</h3>
-        </div>
-        <StatusBadge state={proposal.state} />
-      </div>
-
-      <p className="font-mono text-sm text-gray mb-6 leading-relaxed">
-        {proposal.description}
-      </p>
-
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm mb-4">
-        {isActive ? (
-          <>
-            <div className="flex items-center gap-2">
-              <span className="text-gray">FOR:</span>
-              <SealedValue value={undefined} />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray">AGAINST:</span>
-              <SealedValue value={undefined} />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray">ABSTAIN:</span>
-              <SealedValue value={undefined} />
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <span className="text-gray">FOR:</span>
-              <SealedValue value={proposal.forVotes} />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray">AGAINST:</span>
-              <SealedValue value={proposal.againstVotes} />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray">ABSTAIN:</span>
-              <SealedValue value={proposal.abstainVotes} />
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between pt-4 border-t border-gray-border">
-        <div className="flex items-center gap-6">
-          <span className="font-mono text-sm text-gray">
-            Proposed by {proposal.proposer}
-          </span>
-          <span className="font-mono text-sm text-gray">
-            {proposal.voterCount} votes cast
-          </span>
-        </div>
-
-        {isActive ? (
-          <div className="flex items-center gap-4">
-            <span className="font-mono text-sm text-gray">
-              <CountdownTimer targetDate={proposal.voteEnd} />
-            </span>
-            <a
-              href={`/vote/${proposal.id}`}
-              className="btn-secondary text-xs py-2 px-4"
-            >
-              Vote
-            </a>
-          </div>
-        ) : (
-          <span className="font-mono text-sm text-gray">
-            Closed {new Date(proposal.voteEnd * 1000).toLocaleDateString()}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
+import Link from "next/link";
 
 export default function ProposalsPage() {
-  const [filter, setFilter] = useState<FilterTab>("all");
+  const { proposals, isLoading } = useProposals();
+  const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "CLOSED">("ALL");
 
-  const filteredProposals = DEMO_PROPOSALS.filter((p) => {
-    if (filter === "active") return p.state === ProposalState.ACTIVE;
-    if (filter === "closed") return p.state !== ProposalState.ACTIVE;
+  // Map real proposals to UI format
+  const mappedProposals = proposals.map((p, idx) => {
+    const isClosed = [ProposalState.SUCCEEDED, ProposalState.DEFEATED, ProposalState.EXECUTED, ProposalState.TALLYING].includes(p.state);
+    const totalVotes = p.forVotes + p.againstVotes + p.abstainVotes;
+    
+    // Calculate time left
+    const now = Math.floor(Date.now() / 1000);
+    const diff = p.voteEnd - now;
+    let timeLeft = "CLOSED";
+    if (!isClosed && diff > 0) {
+      const days = Math.floor(diff / 86400);
+      const hours = Math.floor((diff % 86400) / 3600);
+      timeLeft = `${days}d ${hours}h left`;
+    }
+
+    return {
+      id: p.id.toString(),
+      title: p.description.split('\n')[0] || `Proposal #${p.id}`,
+      description: p.description,
+      state: p.state, // Preserve for internal filtering
+      status: p.state === ProposalState.ACTIVE ? "ACTIVE" as const : "PASSED" as const,
+      category: "PROTOCOL",
+      votes: totalVotes > 1000000 ? `${(totalVotes / 1000000).toFixed(1)}M` : totalVotes.toLocaleString(),
+      timeLeft,
+    };
+  });
+
+  const filteredProposals = mappedProposals.filter((p) => {
+    if (filter === "ALL") return true;
+    if (filter === "ACTIVE") return p.state === ProposalState.ACTIVE;
+    if (filter === "CLOSED") return [ProposalState.SUCCEEDED, ProposalState.DEFEATED, ProposalState.EXECUTED].includes(p.state);
     return true;
   });
 
   return (
-    <main className="min-h-screen bg-black">
-      <Navbar />
+    <div className="container px-6 lg:px-12 py-20 max-w-full min-h-screen">
+      <div className="flex flex-col gap-10">
+        <div className="flex justify-between items-end">
+          <div className="flex flex-col gap-4">
+            <span className="font-mono text-xs text-[#888888] uppercase tracking-[0.4em]">SEALFI_GOVERNANCE_REGISTRY</span>
+            <h1 className="text-6xl font-heading font-black tracking-tighter uppercase">
+              PROPOSALS
+            </h1>
+          </div>
+          <Link href="/gov" className="flex items-center gap-2 bg-[#E41E26] text-white px-6 py-3 font-heading font-black text-xs uppercase tracking-widest neo-border-thick neo-shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
+            <Plus className="w-4 h-4" />
+            CREATE_NEW_PROPOSAL
+          </Link>
+        </div>
 
-      <div className="pt-24 pb-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="heading-lg">PROPOSALS</h1>
-            <button className="btn-secondary text-sm py-2 px-4">
-              + New Proposal
+        <div className="flex gap-0 border-b border-border">
+          {["ALL", "ACTIVE", "CLOSED"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab as any)}
+              className={cn(
+                "px-8 py-4 font-heading font-black text-xs uppercase tracking-widest border-b-2 transition-all",
+                filter === tab ? "border-primary text-primary bg-[#111]" : "border-transparent text-[#555] hover:text-white"
+              )}
+            >
+              {tab}
             </button>
-          </div>
+          ))}
+        </div>
 
-          {/* Filter Tabs */}
-          <div className="flex items-center gap-6 mb-8 border-b border-gray-border pb-4">
-            {(["all", "active", "closed"] as FilterTab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setFilter(tab)}
-                className={`font-grotesk text-sm uppercase tracking-wider transition-colors ${
-                  filter === tab ? "text-yellow" : "text-gray hover:text-white"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* Proposals Grid */}
-          <div className="grid gap-6">
-            {filteredProposals.map((proposal) => (
-              <ProposalCard key={proposal.id} proposal={proposal} />
-            ))}
-          </div>
-
-          {filteredProposals.length === 0 && (
-            <div className="text-center py-20">
-              <p className="font-mono text-gray">No proposals found.</p>
+        <div className="flex flex-col gap-8">
+          {isLoading ? (
+            <div className="p-20 border border-border flex flex-col items-center justify-center text-center gap-4">
+               <span className="font-mono text-[#555] uppercase animate-pulse">SYNCHRONIZING_WITH_BLOCKCHAIN...</span>
+            </div>
+          ) : filteredProposals.length > 0 ? (
+            filteredProposals.map((prop, idx) => {
+              const colors = ["#E41E26", "#8B5CF6", "#10B981", "#EC4899", "#F59E0B"];
+              const color = colors[idx % colors.length];
+              return (
+                <Link key={prop.id} href={`/vote/${prop.id}`} className="block">
+                  <ProposalCard 
+                    id={prop.id}
+                    title={prop.title}
+                    status={prop.status}
+                    description={prop.description}
+                    votes={prop.votes}
+                    timeLeft={prop.timeLeft}
+                    category={prop.category}
+                    color={color}
+                    className="max-w-full cursor-pointer hover:translate-x-[-4px] hover:translate-y-[-4px] transition-all"
+                  />
+                </Link>
+              );
+            })
+          ) : (
+            <div className="p-20 border border-border flex flex-col items-center justify-center text-center gap-4">
+              <span className="font-mono text-[#555] uppercase">ZERO_RECORDS_FOUND</span>
             </div>
           )}
         </div>
       </div>
-    </main>
+    </div>
   );
 }

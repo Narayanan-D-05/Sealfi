@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { createInstance, type FhevmInstance } from "fhevmjs";
-import { usePublicClient } from "wagmi";
+import { usePublicClient, useAccount } from "wagmi";
 import { sepolia } from "wagmi/chains";
+import { CONTRACTS } from "@/lib/contracts";
+import { toHex } from "viem";
 
 export type VoteDirection = "for" | "against" | "abstain";
 export type SealingState = "idle" | "initializing" | "sealing" | "submitting" | "confirmed" | "error";
@@ -15,6 +17,7 @@ export type ExternalEuint8 = {
 };
 
 export function useVote() {
+  const { address: userAddress } = useAccount();
   const [selectedVote, setSelectedVote] = useState<VoteDirection | null>(null);
   const [sealingState, setSealingState] = useState<SealingState>("idle");
   const [instance, setInstance] = useState<FhevmInstance | null>(null);
@@ -30,11 +33,13 @@ export function useVote() {
         setSealingState("initializing");
         console.log("[fhevmjs] Initializing WASM module...");
         
-        // Create instance - fhevmjs 0.6.x fetches public key from provider automatically
+        // Create instance - fhevmjs 0.6.x 
         const fhevmInstance = await createInstance({
           chainId: sepolia.id,
-          publicRpc: process.env.NEXT_PUBLIC_RPC_URL || "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
-          gatewayRpc: process.env.NEXT_PUBLIC_GATEWAY_URL || "https://gateway.sepolia.zama.ai",
+          networkUrl: process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.sepolia.org",
+          gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL || "https://gateway.sepolia.zama.ai",
+          kmsContractAddress: "0x8D12A197cb00D61C743DE017251D5603422471a4",
+          aclContractAddress: "0x70E4542307Eed226500F8Aec5B5C953b7FEecEfe",
         });
         
         console.log("[fhevmjs] Instance created, public key synced");
@@ -72,24 +77,30 @@ export function useVote() {
       setSealingState("sealing");
       console.log("[fhevmjs] SEALING VOTE...", direction);
 
+      if (!userAddress) throw new Error("Wallet not connected");
+
       const voteValue = getVoteValue(direction);
       
-      // Encrypt the vote value (0, 1, or 2)
-      // fhevmjs 0.6.x: encrypt8 returns { ciphertext, proof }
-      const encryptionResult = await instance.encrypt8(BigInt(voteValue));
+      // Create input for specific contract and user
+      const input = instance.createEncryptedInput(
+        CONTRACTS.sealGovernor as `0x${string}`, 
+        userAddress
+      );
+      input.add8(voteValue);
+      
+      const encryptionResult = await input.encrypt();
       
       console.log("[fhevmjs] Vote sealed:", {
-        ciphertext: encryptionResult.ciphertext.slice(0, 20) + "...",
-        proof: encryptionResult.proof.slice(0, 20) + "...",
+        handle: encryptionResult.handles[0],
       });
 
       return {
-        ciphertext: encryptionResult.ciphertext as `0x${string}`,
-        proof: encryptionResult.proof as `0x${string}`,
+        ciphertext: toHex(encryptionResult.handles[0]),
+        proof: toHex(encryptionResult.inputProof),
       };
-    } catch (err) {
+    } catch (err: any) {
       console.error("[fhevmjs] Encryption failed:", err);
-      setError("Failed to seal vote");
+      setError(err.message || "Failed to seal vote");
       setSealingState("error");
       return null;
     }

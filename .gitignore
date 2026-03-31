@@ -35,10 +35,14 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Temporal files
-contracts/compile_error.txt
-contracts/compile_error_full.txt
-contracts/compile_error_last.txt
-contracts/deploy_log.txt
-contracts/error_repro.txt
+# Temporal and Log files
+*.txt
 contracts/scripts/check-balance.ts
+*.tsbuildinfo
+*.log
+terminal_history.txt
+frontend/.next/
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+**/deployment.json

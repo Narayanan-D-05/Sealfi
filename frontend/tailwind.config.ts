@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss";
+import type { Config } from "tailwindcss"
 
 const config: Config = {
   content: [
@@ -6,26 +6,28 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    container: { center: true, padding: "2rem", screens: { "2xl": "1400px" } },
     extend: {
-      colors: {
-        black: "#0A0A0A",
-        yellow: {
-          DEFAULT: "#FFE500",
-          dim: "#FFE50020",
-        },
-        white: "#F5F5F5",
-        gray: {
-          DEFAULT: "#888888",
-          border: "#1E1E1E",
-        },
-      },
       fontFamily: {
-        grotesk: ["Space Grotesk", "sans-serif"],
-        mono: ["Space Mono", "monospace"],
+        heading: ["var(--font-space-grotesk)", "sans-serif"],
+        mono: ["var(--font-space-mono)", "monospace"],
+        sans: ["var(--font-space-grotesk)", "sans-serif"],
+      },
+      colors: {
+        primary: "#E41E26",
+        background: "#ffffff",
+        foreground: "#000000",
+        border: "#000000",
+      },
+      borderRadius: {
+        "neo": "24px",
+      },
+      boxShadow: {
+        "neo": "8px 8px 0px 0px rgba(0,0,0,1)",
+        "neo-hover": "12px 12px 0px 0px rgba(0,0,0,1)",
       },
     },
   },
-  plugins: [],
-};
-
-export default config;
+  plugins: [require("tailwindcss-animate")],
+}
+export default config

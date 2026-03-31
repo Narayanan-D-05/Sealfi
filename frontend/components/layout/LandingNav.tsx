@@ -3,18 +3,18 @@
 import Link from "next/link";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { Settings, Shield as ShieldIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-export function Navbar() {
+export function LandingNav() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
 
   const connectWallet = () => {
+    // Default to the first connector (usually injected/MetaMask)
     if (connectors && connectors.length > 0) {
       connect({ connector: connectors[0] });
     } else {
-      console.warn("No connectors found.");
+      console.warn("No connectors found. Is a wallet injected?");
     }
   };
 
