@@ -381,7 +381,7 @@ uint256 weight = Math.sqrt(rawWeight * 1e18); // OpenZeppelin Math.sqrt
 
 | Feature | Testnet (current) | Mainnet (required) |
 |---|---|---|
-| Vote path | `castVotePlain` fallback enabled | Only `castVote` (FHE) allowed |
+| **Vote path** | **FHE (Primary)** + Plaintext Backup | Only FHE (Strict Confidential) |
 | Voting power | `getVotes()` (current) | `getPastVotes()` (snapshot at proposal creation) |
 | Voting delay | 1 minute | 1 day |
 | Voting period | 5 minutes | 3 days |
@@ -395,11 +395,12 @@ uint256 weight = Math.sqrt(rawWeight * 1e18); // OpenZeppelin Math.sqrt
 
 ## Sponsor Alignment
 
-| Sponsor | Technology Used |
+| Track / Category | Alignment & Winning Edge |
 |---|---|
-| **Zama** | fhEVM — `euint8`, `euint128`, `ebool`, `FHE.select()`, `FHE.fromExternal()`, `FHE.makePubliclyDecryptable()`, `ZamaEthereumConfig` |
-| **Hackathon Track: Cryptography** | Confidential governance using FHE — private voting on a public chain |
-| **Hackathon Track: Governance** | Quadratic voting + sealed tally + full DAO lifecycle |
+| **Zama: Confidential Onchain Finance** | **Primary Home.** Built entirely on fhEVM using `euint8`, `euint128`, and `FHE.select()`. Directly addresses the "Confidentiality on public blockchains" challenge. |
+| **Crypto: Governance & Coordination** | **Strategic Core.** Solves whale dominance via **Quadratic Voting** and coordination attacks via **Sealed Ballots**. A true next-gen governance system. |
+| **Infrastructure & Digital Rights** | **Ethical Foundation.** Protects the digital right to a private ballot, ensuring censorship-resistant coordination where not even validators can see intent before the reveal. |
+| **Fresh Code ($50,000 pool)** | **Original Build.** Entirely new codebase developed for this hackathon using the latest Zama and OpenZeppelin primitives. |
 
 ---
 

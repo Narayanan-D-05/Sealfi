@@ -290,6 +290,10 @@ Private voting on a public blockchain is not just a technical feature — it has
 
 Before going live on mainnet, complete these steps:
 
+| **Feature** | **Testnet** | **Mainnet** |
+|---|---|---|
+| **Vote path** | **FHE (Primary)** + Plaintext Backup | Only FHE (Strict Confidential) |
+
 - [ ] **Remove `castVotePlain`**: Delete the plaintext fallback function entirely from `SealGovernor.sol`.
 - [ ] **Snapshot Logic**: Restore `getPastVotes(msg.sender, prop.snapshotBlock - 1)` inside the FHE path.
 - [ ] **Real Timers**: Set `VOTING_DELAY` to 1 day and `VOTING_PERIOD` to 3 days.
