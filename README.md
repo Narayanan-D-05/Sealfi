@@ -17,16 +17,6 @@ hackathon: PL Genesis — Frontiers of Collaboration
 
 ---
 
-## Deployed Contracts — Sepolia Testnet
-
-| Contract | Address |
-|---|---|
-| **SealToken** (SEAL) | [`0x61E6012f78b9275F8Af8b7136119eab2d5a2fc37`](https://sepolia.etherscan.io/address/0x61E6012f78b9275F8Af8b7136119eab2d5a2fc37) |
-| **SealGovernor** | [`0x6FF194327C7CD4F8F24cE5Ec6182838Ebf743991`](https://sepolia.etherscan.io/address/0x6FF194327C7CD4F8F24cE5Ec6182838Ebf743991) |
-| **SealTally** | [`0x1Ca7621335Ea1bcff60929bEFaf1d5FDe7c7dFb4`](https://sepolia.etherscan.io/address/0x1Ca7621335Ea1bcff60929bEFaf1d5FDe7c7dFb4) |
-
----
-
 ## Why SealFi Exists
 
 Every DAO governance protocol publishes live vote tallies. `forVotes: 4,821,304`. `againstVotes: 1,203,901`. Updating every block. Visible to every whale, every vote buyer, every coordinated delegate.
@@ -140,14 +130,14 @@ sequenceDiagram
     User->>Browser: Select FOR / AGAINST / ABSTAIN
     Browser->>KMS: Fetch network public key
     KMS-->>Browser: FHE public key
-    Browser->>Browser: createEncryptedInput(governorAddr, userAddr)<br/>input.add8(voteDirection)<br/>encrypt() → { handles[0], inputProof }
-    Note right of Browser: Vote direction is now<br/>encrypted ciphertext.<br/>Even the browser can't<br/>read it back.
+    Browser->>Browser: createEncryptedInput(governorAddr, userAddr) input.add8(voteDirection) encrypt() → { handles[0], inputProof }
+    Note right of Browser: Vote direction is now encrypted ciphertext. Even the browser can't read it back.
     Browser->>Governor: castVote(proposalId, encHandle, inputProof)
-    Governor->>Governor: FHE.fromExternal(encVote, proof)<br/>Verify ZKP input proof
+    Governor->>Governor: FHE.fromExternal(encVote, proof) Verify ZKP input proof
     Governor->>Governor: weight = sqrt(getVotes(voter) × 1e18)
     Governor->>Tally: castVote(proposalId, euint8 vote, weight)
-    Tally->>Tally: isFor = FHE.eq(vote, 1)<br/>isAgainst = FHE.eq(vote, 0)<br/>isAbstain = FHE.eq(vote, 2)<br/>forVotes += FHE.select(isFor, weight, 0)<br/>againstVotes += FHE.select(isAgainst, weight, 0)<br/>abstainVotes += FHE.select(isAbstain, weight, 0)
-    Note right of Tally: Running total is sealed.<br/>Observer sees: "wallet X<br/>contributed Y weight."<br/>Direction is hidden.
+    Tally->>Tally: isFor = FHE.eq(vote, 1) isAgainst = FHE.eq(vote, 0) isAbstain = FHE.eq(vote, 2) forVotes += FHE.select(isFor, weight, 0) againstVotes += FHE.select(isAgainst, weight, 0) abstainVotes += FHE.select(isAbstain, weight, 0)
+    Note right of Tally: Running total is sealed. Observer sees: "wallet X contributed Y weight." Direction is hidden.
     Tally-->>Governor: VoteAccumulated event
     Governor-->>Browser: VoteCast event (voter, weight only)
     Browser-->>User: ✅ VOTE_SEALED badge + ciphertext handle shown
@@ -156,11 +146,11 @@ sequenceDiagram
 
     User->>Governor: requestTally(proposalId)
     Governor->>Tally: requestDecryption(proposalId)
-    Tally->>KMS: FHE.makePubliclyDecryptable(forVotes)<br/>FHE.makePubliclyDecryptable(againstVotes)<br/>FHE.makePubliclyDecryptable(abstainVotes)
-    KMS->>KMS: Threshold MPC nodes<br/>reconstruct plaintext<br/>from key shares
+    Tally->>KMS: FHE.makePubliclyDecryptable(forVotes) FHE.makePubliclyDecryptable(againstVotes) FHE.makePubliclyDecryptable(abstainVotes)
+    KMS->>KMS: Threshold MPC nodes reconstruct plaintext from key shares
     KMS-->>Browser: Cleartext { forVotes, againstVotes, abstainVotes }
     Browser->>Governor: fulfillTally(proposalId, for, against, abstain)
-    Governor->>Governor: forVotes > againstVotes + quorum?<br/>→ state = SUCCEEDED or DEFEATED
+    Governor->>Governor: forVotes > againstVotes + quorum? → state = SUCCEEDED or DEFEATED
     Governor-->>Browser: TallyFulfilled event
     Browser-->>User: 🎉 PROPOSAL_PASSED / PROPOSAL_DEFEATED
 ```
