@@ -17,8 +17,11 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@fhevm/hardhat-plugin": "^0.4.2",
-    "fhevm": "^0.6.0",
-    "fhevmjs": "^0.6.0"
+    "fhevm": "^0.5.8",
+    "fhevmjs": "^0.5.8",
+    "hardhat-fhevm": "^0.1.6"
+  },
+  "overrides": {
+    "ethers": "~6.10.0"
   }
 }

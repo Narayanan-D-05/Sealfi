@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { SepoliaZamaFHEVMConfig } from "fhevm/config/ZamaFHEVMConfig.sol";
-import { SepoliaZamaGatewayConfig } from "fhevm/config/ZamaGatewayConfig.sol";
-import { GatewayCaller } from "fhevm/gateway/GatewayCaller.sol";
-import { Gateway } from "fhevm/gateway/lib/Gateway.sol";
-import { TFHE, euint8, euint128, ebool } from "fhevm/lib/TFHE.sol";
+import { SepoliaZamaFHEVMConfig } from "./fhevm/config/ZamaFHEVMConfig.sol";
+import { SepoliaZamaGatewayConfig } from "./fhevm/config/ZamaGatewayConfig.sol";
+import { GatewayCaller } from "./fhevm/gateway/GatewayCaller.sol";
+import { Gateway } from "./fhevm/gateway/lib/Gateway.sol";
+import { TFHE, euint8, euint128, ebool } from "./fhevm/lib/TFHE.sol";
 
 contract SealTally is
     SepoliaZamaFHEVMConfig,
@@ -43,9 +43,6 @@ contract SealTally is
             initialised:  true
         });
 
-        TFHE.allowThis(_tallies[proposalId].forVotes);
-        TFHE.allowThis(_tallies[proposalId].againstVotes);
-        TFHE.allowThis(_tallies[proposalId].abstainVotes);
     }
 
     // ─── Accumulate Vote ──────────────────────────────────────────────────
@@ -57,11 +54,11 @@ contract SealTally is
      * @param weight      Plaintext voting weight (token balance snapshot)
      *
      * @dev The vote direction is encrypted. The weight is plaintext.
-     *      TFHE.select routes the weight to the correct encrypted tally
-     *      without revealing which tally received the weight.
+     * TFHE.select routes the weight to the correct encrypted tally
+     * without revealing which tally received the weight.
      *
-     *      An observer sees: weight=500 tokens voted.
-     *      An observer does NOT see: whether those 500 went to FOR or AGAINST.
+     * An observer sees: weight=500 tokens voted.
+     * An observer does NOT see: whether those 500 went to FOR or AGAINST.
      */
     function castVote(
         uint256 proposalId,
@@ -80,8 +77,10 @@ contract SealTally is
         // Add weight to correct tally — zero to the others
         t.forVotes     = TFHE.add(t.forVotes,
             TFHE.select(isFor, encWeight, TFHE.asEuint128(0)));
+            
         t.againstVotes = TFHE.add(t.againstVotes,
             TFHE.select(isAgainst, encWeight, TFHE.asEuint128(0)));
+            
         t.abstainVotes = TFHE.add(t.abstainVotes,
             TFHE.select(isAbstain, encWeight, TFHE.asEuint128(0)));
 
@@ -94,8 +93,8 @@ contract SealTally is
 
     /**
      * @notice Submit all three tally ciphertexts to the Gateway for decryption.
-     *         Called once when the voting period ends.
-     *         The Gateway decrypts and calls back the governor's fulfillTally().
+     * Called once when the voting period ends.
+     * The Gateway decrypts and calls back the governor's fulfillTally().
      */
     function requestDecryption(
         uint256 proposalId,
@@ -115,7 +114,7 @@ contract SealTally is
             block.timestamp + 1 days,
             false
         );
-
+        
         _requestToProposal[requestId] = proposalId;
     }
 
