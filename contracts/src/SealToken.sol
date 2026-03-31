@@ -35,7 +35,8 @@ contract SealToken is ERC20, ERC20Votes, ERC20Permit {
         _;
     }
 
-    function mint(address to, uint256 amount) external onlyOwner {
+    // Testnet Faucet: Anyone can mint for testing purposes
+    function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
 

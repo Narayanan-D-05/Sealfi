@@ -5,21 +5,23 @@ import { SealGovernorABI, CONTRACTS } from "@/lib/contracts";
 import type { Proposal, ProposalState } from "@/hooks/useProposals";
 
 export function useProposals() {
-  const { data: proposalCount } = useReadContract({
+  const { data: proposalCount, refetch: refetchCount } = useReadContract({
     address: CONTRACTS.sealGovernor as `0x${string}`,
     abi: SealGovernorABI,
     functionName: "proposalCount",
+    query: { refetchInterval: 10_000 },
   });
 
   const count = proposalCount ? Number(proposalCount) : 0;
 
-  const { data: results, isLoading } = useReadContracts({
+  const { data: results, isLoading, refetch } = useReadContracts({
     contracts: Array.from({ length: count }).map((_, i) => ({
       address: CONTRACTS.sealGovernor as `0x${string}`,
       abi: SealGovernorABI as any,
       functionName: "getProposal",
       args: [BigInt(i + 1)],
     })),
+    query: { refetchInterval: 10_000 },
   });
 
   const proposals: Proposal[] = results
@@ -43,15 +45,16 @@ export function useProposals() {
       })
     : [];
 
-  return { proposals, isLoading };
+  return { proposals, isLoading, refetch };
 }
 
 export function useProposal(id: number) {
-  const { data, isLoading } = useReadContract({
+  const { data, isLoading, refetch } = useReadContract({
     address: CONTRACTS.sealGovernor as `0x${string}`,
     abi: SealGovernorABI,
     functionName: "getProposal",
     args: [BigInt(id)],
+    query: { refetchInterval: 10_000 },
   });
 
   const proposal: Proposal | null = data
@@ -72,19 +75,57 @@ export function useProposal(id: number) {
       }
     : null;
 
-  return { proposal, isLoading };
+  return { proposal, isLoading, refetch };
 }
 
 export function useCastVote() {
   const { writeContractAsync, isPending } = useWriteContract();
 
-  const castVote = async (proposalId: number, encVote: `0x${string}`, proof: `0x${string}`) => {
-    return writeContractAsync({
+  /**
+   * Tries the real FHE castVote path first (uses fhevmjs to encrypt the vote
+   * direction before it leaves the browser — the contract sees only ciphertext).
+   * Falls back to castVotePlain if the Zama gateway is unreachable.
+   *
+   * Returns { hash, encrypted } where encrypted is the hex ciphertext handle
+   * so the UI can display proof of encryption.
+   */
+  const castVote = async (
+    proposalId: number,
+    direction: string,
+    encryptedVote?: { ciphertext: `0x${string}`; proof: `0x${string}` } | null
+  ): Promise<{ hash: string; encrypted: boolean; ciphertext?: string }> => {
+    const directionMap: Record<string, number> = { for: 1, against: 0, abstain: 2 };
+    const directionValue = directionMap[direction] ?? 1;
+
+    // ── FHE path: use the encrypted ciphertext if available ──────────────────
+    if (encryptedVote?.ciphertext && encryptedVote?.proof) {
+      // Validate it's a real fhevmjs ciphertext (not our plaintext fallback).
+      // A real ciphertext is 32 bytes of random-looking data, not a padded uint8.
+      const isRealCiphertext = encryptedVote.ciphertext.length > 66; // > 32 bytes
+
+      if (isRealCiphertext) {
+        try {
+          const hash = await writeContractAsync({
+            address: CONTRACTS.sealGovernor as `0x${string}`,
+            abi: SealGovernorABI,
+            functionName: "castVote",
+            args: [BigInt(proposalId), encryptedVote.ciphertext, encryptedVote.proof],
+          });
+          return { hash, encrypted: true, ciphertext: encryptedVote.ciphertext };
+        } catch (err: any) {
+          console.warn("[castVote] FHE path failed, falling back to plaintext:", err?.message);
+        }
+      }
+    }
+
+    // ── Plaintext fallback (testnet only) ────────────────────────────────────
+    const hash = await writeContractAsync({
       address: CONTRACTS.sealGovernor as `0x${string}`,
       abi: SealGovernorABI,
-      functionName: "castVote",
-      args: [BigInt(proposalId), BigInt(encVote), proof],
+      functionName: "castVotePlain",
+      args: [BigInt(proposalId), directionValue],
     });
+    return { hash, encrypted: false };
   };
 
   return { castVote, isPending };

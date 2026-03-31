@@ -123,6 +123,16 @@ export const SealGovernorABI = [
     type: "function",
   },
   {
+    inputs: [
+      { internalType: "uint256", name: "proposalId", type: "uint256" },
+      { internalType: "uint8",   name: "direction",  type: "uint8"  },
+    ],
+    name: "castVotePlain",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [{ internalType: "uint256", name: "proposalId", type: "uint256" }],
     name: "execute",
     outputs: [],
@@ -204,6 +214,18 @@ export const SealGovernorABI = [
   {
     inputs: [{ internalType: "uint256", name: "proposalId", type: "uint256" }],
     name: "requestTally",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "proposalId",   type: "uint256" },
+      { internalType: "uint256", name: "forVotes",     type: "uint256" },
+      { internalType: "uint256", name: "againstVotes", type: "uint256" },
+      { internalType: "uint256", name: "abstainVotes", type: "uint256" },
+    ],
+    name: "fulfillTally",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

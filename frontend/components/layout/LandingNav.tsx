@@ -2,12 +2,22 @@
 
 import Link from "next/link";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { Settings, Shield as ShieldIcon } from "lucide-react";
+import { Settings, Shield as ShieldIcon, Zap, Coins } from "lucide-react";
+import { useToken } from "@/hooks/useToken";
+import { useState, useEffect } from "react";
 
 export function LandingNav() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+  const { votes, balance, effectiveVotes, delegate, mint, refetch } = useToken();
+  const [isActivating, setIsActivating] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const connectWallet = () => {
     // Default to the first connector (usually injected/MetaMask)
@@ -47,19 +57,60 @@ export function LandingNav() {
         </div>
 
         <div className="flex items-center gap-4">
-          {isConnected ? (
-            <button 
-              onClick={() => disconnect()}
-              className="flex items-center gap-2 bg-black text-white px-6 py-2.5 rounded-full font-heading font-black text-[10px] uppercase neo-shadow-hard hover:bg-[#E41E26] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
-            >
-              {formatAddress(address!)}
-            </button>
-          ) : (
+          {mounted && isConnected && (
+            <div className="hidden lg:flex items-center gap-2 mr-4">
+              {votes === BigInt(0) && balance > BigInt(0) && (
+                <button
+                  onClick={async () => {
+                    setIsActivating(true);
+                    try { await delegate(); } catch (e) {}
+                    setIsActivating(false);
+                  }}
+                  disabled={isActivating}
+                  className="flex items-center gap-2 bg-yellow-400 text-black px-4 py-2 border-[3px] border-black font-heading font-black text-[10px] uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50"
+                >
+                  <Zap className="w-3 h-3" />
+                  {isActivating ? "ACTIVATING..." : "ACTIVATE_VOTING"}
+                </button>
+              )}
+              {balance === BigInt(0) && (
+                <button
+                  onClick={async () => {
+                    setIsMinting(true);
+                    try { await mint(); } catch (e) {}
+                    setIsMinting(false);
+                  }}
+                  disabled={isMinting}
+                  className="flex items-center gap-2 bg-blue-400 text-black px-4 py-2 border-[3px] border-black font-heading font-black text-[10px] uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50"
+                >
+                  <Coins className="w-3 h-3" />
+                  {isMinting ? "MINTING..." : "GET_TEST_TOKENS"}
+                </button>
+              )}
+              {votes > BigInt(0) && (
+                <div className="flex flex-col items-end mr-4 leading-none">
+                  <span className="font-mono text-[8px] text-black/40 uppercase font-black mb-1 tracking-tighter">QUAD_POWER</span>
+                  <span className="font-heading font-black text-xs text-[#E41E26] uppercase">
+                    {(Number(effectiveVotes) / 1e18).toFixed(1)} SEAL
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(!mounted || !isConnected) ? (
             <button 
               onClick={connectWallet}
               className="flex items-center gap-2 bg-black text-white px-6 py-2.5 rounded-full font-heading font-black text-[10px] uppercase neo-shadow-hard hover:bg-[#E41E26] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
             >
               CONNECT_WALLET
+            </button>
+          ) : (
+            <button 
+              onClick={() => disconnect()}
+              className="flex items-center gap-2 bg-black text-white px-6 py-2.5 rounded-full font-heading font-black text-[10px] uppercase neo-shadow-hard hover:bg-[#E41E26] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
+            >
+              {formatAddress(address!)}
             </button>
           )}
           

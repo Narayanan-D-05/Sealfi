@@ -81,11 +81,27 @@ async function main() {
   const frontendEnv = path.join(__dirname, "..", "..", "frontend", ".env");
   if (fs.existsSync(frontendEnv)) {
     let content = fs.readFileSync(frontendEnv, "utf-8");
+    // Next.js public vars (used by the app)
+    content = upsert(content, "NEXT_PUBLIC_SEAL_TOKEN_ADDRESS",    tokenAddr);
+    content = upsert(content, "NEXT_PUBLIC_SEAL_GOVERNOR_ADDRESS", governorAddr);
+    content = upsert(content, "NEXT_PUBLIC_SEAL_TALLY_ADDRESS",    tallyAddr);
+    // Vite vars (kept for legacy compatibility)
     content = upsert(content, "VITE_TOKEN_ADDRESS",    tokenAddr);
     content = upsert(content, "VITE_GOVERNOR_ADDRESS", governorAddr);
     content = upsert(content, "VITE_TALLY_ADDRESS",    tallyAddr);
     fs.writeFileSync(frontendEnv, content);
     console.log(`🔗  Updated frontend/.env with contract addresses`);
+  }
+
+  // ── Update contracts/.env (so hardhat scripts stay in sync) ───────────────
+  const contractsEnv = path.join(__dirname, "..", ".env");
+  if (fs.existsSync(contractsEnv)) {
+    let content = fs.readFileSync(contractsEnv, "utf-8");
+    content = upsert(content, "NEXT_PUBLIC_SEAL_TOKEN_ADDRESS",    tokenAddr);
+    content = upsert(content, "NEXT_PUBLIC_SEAL_GOVERNOR_ADDRESS", governorAddr);
+    content = upsert(content, "NEXT_PUBLIC_SEAL_TALLY_ADDRESS",    tallyAddr);
+    fs.writeFileSync(contractsEnv, content);
+    console.log(`🔗  Updated contracts/.env with contract addresses`);
   }
 
   console.log("\n✅  Deployment complete!\n");

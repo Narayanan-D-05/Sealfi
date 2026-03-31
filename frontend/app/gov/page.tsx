@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { PlusCircle, Info, FileText, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useCreateProposal } from "@/hooks/useGovernor";
+import { useToken } from "@/hooks/useToken";
 import Link from "next/link";
 
 export default function GovPage() {
@@ -12,6 +13,7 @@ export default function GovPage() {
   const [description, setDescription] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const { createProposal, isPending } = useCreateProposal();
+  const { votes, balance } = useToken();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +43,7 @@ export default function GovPage() {
           </div>
           <div className="flex items-center gap-4 bg-[#fafafa] p-4 neo-border-thick font-mono text-[9px] font-black uppercase">
             <Info className="w-4 h-4 text-primary" />
-            <span>ENACTMENT_DELAY: 172,800 BLOCKS</span>
+            <span>PROTOCOL_DELAY: ~15-30 SECONDS (TALLY)</span>
           </div>
         </div>
 
@@ -75,9 +77,13 @@ export default function GovPage() {
                 <div className="p-8 bg-[#fafafa] border-[3px] border-black flex flex-col gap-4">
                    <h4 className="font-heading font-black text-xs uppercase tracking-tighter">PRE_FLIGHT_CHECKLIST</h4>
                    <ul className="space-y-3 font-mono text-[10px] font-black uppercase">
-                     <li className="flex items-center gap-3 text-green-600"><CheckCircle2 className="w-4 h-4" /> MINIMUM_VOTES_DELEGATED</li>
-                     <li className="flex items-center gap-3 text-green-600"><CheckCircle2 className="w-4 h-4" /> NETWORK_FEES_AVAILABLE</li>
-                     <li className="flex items-center gap-3 opacity-40"><div className="w-4 h-4 rounded-full border-2 border-black" /> QUORUM_REACHABLE (PREDICTED)</li>
+                     <li className={cn("flex items-center gap-3", votes > BigInt(0) ? "text-green-600" : "text-primary")}>
+                       <CheckCircle2 className="w-4 h-4" /> {votes > BigInt(0) ? "VOTES_ACTIVATED" : "ZERO_VOTING_POWER_DETECTED"}
+                     </li>
+                     <li className={cn("flex items-center gap-3", balance > BigInt(0) ? "text-green-600" : "text-primary")}>
+                       <CheckCircle2 className="w-4 h-4" /> {balance > BigInt(0) ? "TOKEN_RESERVES_DETECTED" : "NO_TOKENS_FOUND"}
+                     </li>
+                     <li className="flex items-center gap-3 opacity-40"><div className="w-4 h-4 rounded-full border-2 border-black" /> NETWORK_FEES_READY</li>
                    </ul>
                 </div>
 

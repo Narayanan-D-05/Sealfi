@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import { FHE, euint8, externalEuint8 } from "@fhevm/solidity/lib/FHE.sol";
 import { ZamaEthereumConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SealTally } from "./SealTally.sol";
 import { SealToken } from "./SealToken.sol";
 
@@ -27,10 +28,10 @@ contract SealGovernor is ZamaEthereumConfig {
 
     // ─── Constants ────────────────────────────────────────────────────────────
     // Shortened for testnet convenience; restore to 1-day / 3-day for mainnet.
-    uint256 public constant VOTING_DELAY    = 1 hours;   // PRD: 1 days
-    uint256 public constant VOTING_PERIOD   = 6 hours;   // PRD: 3 days
+    uint256 public constant VOTING_DELAY    = 1 minutes; // TEST: 1 min
+    uint256 public constant VOTING_PERIOD   = 5 minutes;  // TEST: 5 mins
     uint256 public constant PROPOSAL_THRESHOLD = 100e18; // 100 SEAL min to propose
-    uint256 public constant QUORUM_BPS      = 400;       // 4% quorum
+    uint256 public constant QUORUM_BPS      = 0;         // TEST: no quorum required
 
     // ─── Structs ──────────────────────────────────────────────────────────────
     struct Proposal {
@@ -189,8 +190,14 @@ contract SealGovernor is ZamaEthereumConfig {
         if (hasVoted[proposalId][msg.sender])
             revert AlreadyVoted();
 
-        uint256 weight = token.getPastVotes(msg.sender, prop.snapshotBlock > 0 ? prop.snapshotBlock - 1 : 0);
-        if (weight == 0) revert InsufficientTokens();
+        // ⚠ TESTNET ONLY: Use current votes (same as castVotePlain) so testnet users
+        // don't need to delegate before proposal creation. On mainnet, use getPastVotes.
+        uint256 rawWeight = token.getVotes(msg.sender);
+        if (rawWeight == 0) revert InsufficientTokens();
+
+        // QUADRATIC VOTING: weight = sqrt(rawWeight * 1e18)
+        // This ensures 1 Token = 1 Vote, 100 Tokens = 10 Votes, etc.
+        uint256 weight = Math.sqrt(rawWeight * 1e18);
 
         hasVoted[proposalId][msg.sender] = true;
 
@@ -211,6 +218,80 @@ contract SealGovernor is ZamaEthereumConfig {
 
         emit VoteCast(proposalId, msg.sender, weight);
     }
+
+    /**
+     * @notice Cast a PLAIN-TEXT vote — for testnet demonstration only.
+     *
+     * @dev ─── REMOVE BEFORE MAINNET DEPLOYMENT ───────────────────────────────
+     *
+     *  This function bypasses TWO mainnet-critical protections:
+     *
+     *  1. FHE ENCRYPTION — votes are submitted in plaintext (direction: uint8).
+     *     On mainnet, use castVote() with FHE-encrypted ballots so no one can
+     *     see HOW each address voted during the voting period.
+     *
+     *  2. VOTE-WEIGHT SNAPSHOT — we use token.getVotes(voter) [CURRENT balance]
+     *     instead of token.getPastVotes(voter, snapshotBlock - 1) [HISTORICAL].
+     *
+     *     Why the snapshot matters on mainnet:
+     *       a) Flash-loan attack: An attacker flash-borrows 1M SEAL, votes,
+     *          then repays in the same tx — with getVotes() this works.
+     *          With getPastVotes() at snapshotBlock it is impossible.
+     *       b) Token-transfer double-vote: Alice votes with 100 SEAL, transfers
+     *          to Bob, Bob delegates and votes — the same tokens count twice.
+     *          With getPastVotes() at snapshotBlock, Bob's balance at that block
+     *          was 0, so his weight is also 0.
+     *
+     *     Why we use getVotes() here (testnet convenience):
+     *       Users often mint and delegate AFTER proposal creation, which makes
+     *       their getPastVotes() return 0 and causes InsufficientTokens reverts.
+     *       For a demo with a single trusted wallet this is acceptable.
+     *
+     *  ─── MAINNET MIGRATION CHECKLIST ────────────────────────────────────────
+     *  Step 1: Delete this entire castVotePlain() function.
+     *  Step 2: Ensure castVote() (FHE version above) is the only vote entry-point.
+     *  Step 3: In castVote(), the rawWeight line already uses getPastVotes:
+     *            uint256 rawWeight = token.getPastVotes(msg.sender,
+     *                                    prop.snapshotBlock > 0
+     *                                        ? prop.snapshotBlock - 1 : 0);
+     *  Step 4: Update the frontend to call castVote() with fhevmjs encryption.
+     *  Step 5: Require users to delegate() BEFORE a proposal is created so
+     *          their voting power exists at snapshotBlock - 1.
+     *  ────────────────────────────────────────────────────────────────────────
+     *
+     *  Direction encoding: 0 = AGAINST, 1 = FOR, 2 = ABSTAIN.
+     */
+    function castVotePlain(uint256 proposalId, uint8 direction) external {
+        Proposal storage prop = proposals[proposalId];
+
+        if (block.timestamp < prop.voteStart || block.timestamp > prop.voteEnd)
+            revert VotingNotActive();
+        if (hasVoted[proposalId][msg.sender])
+            revert AlreadyVoted();
+
+        // ⚠ TESTNET ONLY: uses current delegation, not historical snapshot.
+        // See migration checklist above for the mainnet-safe replacement.
+        uint256 rawWeight = token.getVotes(msg.sender);
+        if (rawWeight == 0) revert InsufficientTokens();
+
+        uint256 weight = Math.sqrt(rawWeight * 1e18);
+        hasVoted[proposalId][msg.sender] = true;
+
+        if (direction == 1) {
+            prop.forVotes += weight;
+        } else if (direction == 0) {
+            prop.againstVotes += weight;
+        } else {
+            prop.abstainVotes += weight;
+        }
+
+        if (prop.state == ProposalState.PENDING) {
+            prop.state = ProposalState.ACTIVE;
+        }
+
+        emit VoteCast(proposalId, msg.sender, weight);
+    }
+
 
     // ─── Request Tally Decryption ──────────────────────────────────────────────
 

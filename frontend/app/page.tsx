@@ -11,7 +11,9 @@ import Link from "next/link";
 export default function Home() {
   const { proposals, isLoading } = useProposals();
 
-  // Map real proposals to UI format
+  // Create representative 'leaked' values for the comparison column
+  const leakedFor = 4782900 + (proposals.length * 100);
+  const leakedAgainst = 1245300 + (proposals.length * 50);
   const mappedProposals = proposals.map((p, idx) => {
     const isClosed = [ProposalState.SUCCEEDED, ProposalState.DEFEATED, ProposalState.EXECUTED, ProposalState.TALLYING].includes(p.state);
     const totalVotes = p.forVotes + p.againstVotes + p.abstainVotes;
@@ -95,11 +97,11 @@ export default function Home() {
               <div className="space-y-6">
                 <div className="flex justify-between items-end border-b-2 border-black/10 pb-4">
                   <span className="font-mono text-[10px] text-black/40 uppercase">VOTES_FOR</span>
-                  <span className="font-mono text-3xl font-black">4.8M SEAL</span>
+                  <span className="font-mono text-3xl font-black">{(leakedFor / 1000000).toFixed(1)}M SEAL</span>
                 </div>
                 <div className="flex justify-between items-end border-b-2 border-black/10 pb-4">
                   <span className="font-mono text-[10px] text-black/40 uppercase">VOTES_AGAINST</span>
-                  <span className="font-mono text-3xl font-black">1.2M SEAL</span>
+                  <span className="font-mono text-3xl font-black">{(leakedAgainst / 1000000).toFixed(1)}M SEAL</span>
                 </div>
                 <div className="p-4 bg-red-50 font-mono text-[10px] font-bold text-red-600 uppercase text-center border-2 border-red-200">
                   ⚠️ REALTIME_LEAK_DETECTED: TRENDS_VISIBLE_TO_WHALES
