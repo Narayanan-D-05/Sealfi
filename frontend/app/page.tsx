@@ -73,9 +73,14 @@ export default function Home() {
               <Link href="/proposals" className="bg-black text-white px-16 py-6 rounded-full font-heading font-black text-sm uppercase neo-shadow-hard hover:bg-[#E41E26] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center">
                 LAUNCH_APP
               </Link>
-              <button className="bg-white text-black px-16 py-6 rounded-full font-heading font-black text-sm uppercase neo-border-thick hover:bg-black hover:text-white transition-all shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-                READ_SPECS
-              </button>
+              <Link 
+                href="https://github.com/Narayanan-D-05/Sealfi" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-white text-black px-16 py-6 rounded-full font-heading font-black text-sm uppercase neo-border-thick hover:bg-black hover:text-white transition-all shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center"
+              >
+                GITHUB
+              </Link>
             </div>
           </motion.div>
         </div>
@@ -197,9 +202,9 @@ export default function Home() {
         <div className="container max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
           <div className="font-heading font-black text-3xl">SEAL<span className="text-[#E41E26]">FI.</span></div>
           <div className="flex gap-12 font-mono text-[10px] font-black uppercase tracking-[0.3rem]">
-            <a href="#" className="hover:text-[#E41E26]">Twitter</a>
-            <a href="#" className="hover:text-[#E41E26]">Github</a>
-            <a href="#" className="hover:text-[#E41E26]">Docs</a>
+            <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#E41E26]">Twitter</a>
+            <a href="https://github.com/Narayanan-D-05/Sealfi" target="_blank" rel="noopener noreferrer" className="hover:text-[#E41E26]">Github</a>
+            <a href="/doc.md" className="hover:text-[#E41E26]">Docs</a>
           </div>
         </div>
       </footer>

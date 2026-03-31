@@ -1,6 +1,7 @@
 {
   "name": "sealfi-contracts",
   "version": "2.0.0",
+  "license": "MIT",
   "description": "SealFi - Confidential DAO Governance Contracts (fhevm v0.11.x stack)",
   "scripts": {
     "compile": "npx hardhat compile",
