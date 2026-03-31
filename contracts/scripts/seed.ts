@@ -1,120 +1,113 @@
 import { ethers } from "hardhat";
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
+import hre from "hardhat";
 
+/**
+ * SealFi Seed Script
+ *
+ * Seeds the deployed contracts with:
+ *   1. Mints SEAL tokens to test voters.
+ *   2. Each voter self-delegates.
+ *   3. Creates a test proposal.
+ *   4. Casts encrypted votes using @fhevm/hardhat-plugin (real on-chain encryption).
+ *
+ * Usage:
+ *   npx hardhat run scripts/seed.ts --network sepolia
+ *
+ * Prerequisites:
+ *   - deployment.json must exist (run deploy.ts first).
+ *   - DEPLOYER_PRIVATE_KEY must hold enough ETH.
+ */
 async function main() {
-  const [deployer, voter1, voter2] = await ethers.getSigners();
-  
-  // Read deployment addresses
-  const deploymentPath = path.join(__dirname, "deployment.json");
-  
+  const deploymentPath = path.join(__dirname, "..", "deployment.json");
   if (!fs.existsSync(deploymentPath)) {
-    console.error("Error: deployment.json not found!");
-    console.error("Please run 'npx hardhat run scripts/deploy.ts --network fhevm_sepolia' first.");
-    process.exit(1);
+    throw new Error("deployment.json not found — run deploy.ts first");
   }
-  
-  const deploymentData = JSON.parse(fs.readFileSync(deploymentPath, "utf8"));
-  
-  const sealToken = await ethers.getContractAt("SealToken", deploymentData.sealToken);
-  const sealGovernor = await ethers.getContractAt("SealGovernor", deploymentData.sealGovernor);
-  
-  console.log("Seeding with demo data...");
-  console.log("Using deployer:", deployer.address);
-  
-  // Mint tokens to deployer
-  const mintAmount = ethers.parseEther("1000000"); // 1M tokens
-  await sealToken.mint(deployer.address, mintAmount);
-  console.log("Minted 1M SEAL to deployer");
-  
-  // Delegate tokens to self (required for voting power)
-  await sealToken.delegate(deployer.address);
-  console.log("Delegated voting power to self");
-  
-  // Wait a bit for delegation to settle
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  // Check voting power
-  const votingPower = await sealToken.getVotes(deployer.address);
-  console.log("Voting power:", ethers.formatEther(votingPower), "SEAL");
-  
-  // Create demo proposals with different states
-  const targets = [deployer.address, deployer.address, deployer.address];
-  const callDatas = ["0x", "0x", "0x"];
-  const descriptions = [
-    "Adjust protocol fee from 0.30% to 0.25%",
-    "Add HBAR as accepted collateral type",
-    "Increase treasury allocation to 12% of protocol fees"
+
+  const deployment = JSON.parse(fs.readFileSync(deploymentPath, "utf-8"));
+  const { SealToken: tokenAddr, SealGovernor: governorAddr } = deployment.contracts;
+
+  const [deployer, voter1, voter2, voter3] = await ethers.getSigners();
+  const network = await ethers.provider.getNetwork();
+  const isSepolia = network.chainId === 11155111n;
+  const confirms  = isSepolia ? 2 : 1;
+
+  console.log(`\n🌱  Seeding SealFi on chain ${network.chainId}`);
+  console.log(`    Deployer:  ${deployer.address}\n`);
+
+  const sealToken    = await ethers.getContractAt("SealToken",    tokenAddr);
+  const sealGovernor = await ethers.getContractAt("SealGovernor", governorAddr);
+
+  const MINT_AMOUNT = ethers.parseEther("1000");
+
+  // ── 1. Mint & Delegate ────────────────────────────────────────────────────
+  for (const voter of [voter1, voter2, voter3]) {
+    console.log(`  Minting ${ethers.formatEther(MINT_AMOUNT)} SEAL → ${voter.address}`);
+    const mintTx = await sealToken.mint(voter.address, MINT_AMOUNT);
+    await mintTx.wait(confirms);
+
+    const delTx = await sealToken.connect(voter).delegate(voter.address);
+    await delTx.wait(confirms);
+    console.log(`  Delegated self for ${voter.address}`);
+  }
+
+  // Allow checkpoint to settle on Sepolia (2 blocks minimum)
+  if (isSepolia) {
+    console.log("\n  Waiting for checkpoint settlement (15s)...");
+    await new Promise(r => setTimeout(r, 15_000));
+  }
+
+  // ── 2. Propose ────────────────────────────────────────────────────────────
+  console.log("\n  Creating test proposal...");
+  const proposeTx = await sealGovernor.connect(deployer).propose(
+    "Seed Proposal: Enable Confidential Treasury Transfers",
+    tokenAddr,
+    "0x"
+  );
+  await proposeTx.wait(confirms);
+  const propId = 1n;
+  console.log(`  ✓ Proposal #${propId} created\n`);
+
+  // ── 3. Wait for voting delay ──────────────────────────────────────────────
+  const prop     = await sealGovernor.getProposal(propId);
+  const voteStart = Number(prop.voteStart ?? prop[2]);
+  const now       = Math.floor(Date.now() / 1000);
+
+  if (voteStart > now) {
+    const wait = voteStart - now + 5;
+    console.log(`  ⏳ Waiting ${wait}s for voting window to open...`);
+    await new Promise(r => setTimeout(r, wait * 1000));
+  }
+
+  // ── 4. Cast Encrypted Votes ───────────────────────────────────────────────
+  const directions: [any, 0 | 1 | 2][] = [
+    [voter1, 1], // FOR
+    [voter2, 1], // FOR
+    [voter3, 0], // AGAINST
   ];
-  
-  // NOTE: If running on a public testnet (like fhevm_sepolia), evm_increaseTime will fail.
-  // The PRD requests distinct proposal states (Closed, Active 1 day left, Active 2 days left).
-  // Without the ability to change the smart contract constants, we simulate time where possible.
-  
-  // Create proposals
-  for (let i = 0; i < descriptions.length; i++) {
-    const tx = await sealGovernor.propose(
-      descriptions[i],
-      targets[i],
-      callDatas[i]
-    );
-    await tx.wait();
-    console.log(`Created proposal #${i + 1}: ${descriptions[i]}`);
-    
-    // Attempt to shift time so they end up staggerred (1 day apart)
-    try {
-      await ethers.provider.send("evm_increaseTime", [24 * 60 * 60]); // 1 day
-      await ethers.provider.send("evm_mine", []);
-      console.log("  Successfully fast-forwarded time by 1 day.");
-    } catch (e) {
-      // Ignore if networking doesn't allow time shifting
-      console.log("  Time shifting not supported on this network. State will remain pending/active.");
-    }
+
+  for (const [voter, direction] of directions) {
+    console.log(`  Encrypting vote (direction=${direction}) for ${voter.address}`);
+    const input = hre.fhevm.createEncryptedInput(governorAddr, voter.address);
+    input.add8(BigInt(direction));
+    const enc = await input.encrypt();
+
+    const voteTx = await sealGovernor
+      .connect(voter)
+      .castVote(propId, enc.handles[0], enc.inputProof);
+    await voteTx.wait(confirms);
+    console.log(`  ✓ Vote cast by ${voter.address}`);
   }
 
-  // One final time advance to ensure Proposal 1 crosses its voteEnd and becomes Closed
-  try {
-    await ethers.provider.send("evm_increaseTime", [24 * 60 * 60]); // +1 day
-    await ethers.provider.send("evm_mine", []);
-    console.log("Successfully fast-forwarded final day. Proposal 1 is now CLOSED.");
-  } catch (e) {
-    // Ignore
-  }
-
-  // Cast mock encrypted votes if fhevmjs is installed
-  try {
-    const fhevmjs = await import("fhevmjs");
-    console.log("fhevmjs found. Attempting to cast mock votes...");
-    
-    const fhevmInstance = await fhevmjs.createInstance({
-      chainId: (await ethers.provider.getNetwork()).chainId,
-      networkUrl: ethers.provider._getConnection().url,
-      gatewayUrl: "https://gateway.sepolia.zama.ai",
-    });
-
-    // Encrypt a FOR vote (1)
-    console.log("Encrypting a FOR vote...");
-    const encryptedFor = await fhevmInstance.encrypt8(1n);
-
-    // Cast vote on Proposal 3 (the last one)
-    console.log("Casting vote on Proposal 3...");
-    const voteTx = await sealGovernor.castVote(
-      3,
-      encryptedFor.ciphertext,
-      encryptedFor.proof
-    );
-    await voteTx.wait();
-    console.log("Successfully cast encrypted vote on Proposal 3!");
-
-  } catch (err) {
-    console.log("fhevmjs not installed or encryption failed. Skipping mock encrypted votes.");
-    console.log("To cast mock votes in seed.ts, please 'npm install fhevmjs'.");
-  }
-  
-  console.log("Seeding complete!");
+  console.log("\n✅  Seed complete!");
+  console.log("   Next: wait for voting period to end, then call:");
+  console.log("         await sealGovernor.requestTally(1)");
+  console.log("         → get clear-text via hre.fhevm.publicDecryptEuint()");
+  console.log("         → await sealGovernor.fulfillTally(1, for, against, abstain)\n");
 }
 
-main().catch((error) => {
-  console.error(error);
+main().catch((err) => {
+  console.error(err);
   process.exitCode = 1;
 });

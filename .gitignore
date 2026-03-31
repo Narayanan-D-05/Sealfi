@@ -3,9 +3,11 @@ node_modules/
 package-lock.json (ignore if you want yarn/pnpm or just to keep repository small, but usually committed)
 # actually, keeping package-lock.json is best practice.
 
-# Environment Variables
+# Environment Variables — protect real secrets, allow examples
 *.env
 *.env.*
+!.env.example
+!**/.env.example
 
 # Hardhat
 contracts/artifacts/
@@ -14,7 +16,10 @@ contracts/typechain/
 contracts/typechain-types/
 contracts/coverage/
 contracts/coverage.json
+contracts/deployment.json
 contracts/scripts/deployment.json
+contracts/fhevmTemp/
+**/deployment.json
 
 # Next.js
 frontend/.next/

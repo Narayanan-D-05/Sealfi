@@ -7,27 +7,21 @@ import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 
 /**
+ * @title  SealToken
  * @notice SealFi governance token.
  *
- * Note: This token uses standard ERC20Votes — balances are PUBLIC.
+ * Balances are PUBLIC by design:
+ *   - Observers know: Alice holds 500,000 SEAL tokens.
+ *   - Observers do NOT know: Alice voted FOR or AGAINST.
  *
- * This is an intentional and honest design decision:
- *
- * The AMOUNT of voting power each address holds is already public
- * on every existing governance protocol. SealFi does not hide this.
- * What SealFi hides is HOW each address voted — the direction.
- *
- * An attacker knows: Alice holds 500,000 SEAL tokens.
- * An attacker does NOT know: Alice voted FOR or AGAINST.
- * An attacker cannot see: whether the proposal is currently winning.
- *
- * Hiding token balances (using ConfidentialERC20) is a separate problem
- * orthogonal to vote direction privacy. SealFi solves vote direction privacy.
- * ConfidentialERC20 integration is a V2 consideration.
+ * Vote direction privacy is handled by SealTally via fhEVM.
+ * Hiding token balances (ConfidentialERC20) is a V2 consideration.
  */
 contract SealToken is ERC20, ERC20Votes, ERC20Permit {
 
     address public owner;
+
+    error NotOwner();
 
     constructor()
         ERC20("SealFi Governance Token", "SEAL")
@@ -37,7 +31,7 @@ contract SealToken is ERC20, ERC20Votes, ERC20Permit {
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
+        if (msg.sender != owner) revert NotOwner();
         _;
     }
 
@@ -45,7 +39,13 @@ contract SealToken is ERC20, ERC20Votes, ERC20Permit {
         _mint(to, amount);
     }
 
-    // Required overrides
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Zero address");
+        owner = newOwner;
+    }
+
+    // ─── Required overrides ──────────────────────────────────────────────────
+
     function _update(address from, address to, uint256 value)
         internal override(ERC20, ERC20Votes)
     {

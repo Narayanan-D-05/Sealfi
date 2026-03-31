@@ -1,6 +1,6 @@
 import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import "hardhat-fhevm";
+import "@fhevm/hardhat-plugin";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -15,25 +15,21 @@ const config: HardhatUserConfig = {
       },
       viaIR: true,
       evmVersion: "cancun",
-      metadata: {
-        appendCBOR: false,
-      },
     },
   },
   networks: {
+    // Local Hardhat: uses mock coprocessor auto-injected by @fhevm/hardhat-plugin
     hardhat: {
       chainId: 31337,
     },
-    fhevm_sepolia: {
-      url: process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
-      accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
-      chainId: 11155111,
-      timeout: 120000,
-    },
+    // Sepolia testnet: real FHE encryption via Zama coprocessor
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
-      accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
+      accounts: process.env.DEPLOYER_PRIVATE_KEY
+        ? [process.env.DEPLOYER_PRIVATE_KEY]
+        : [],
       chainId: 11155111,
+      timeout: 120000,
     },
   },
   paths: {
