@@ -109,7 +109,7 @@ export function useCastVote() {
             address: CONTRACTS.sealGovernor as `0x${string}`,
             abi: SealGovernorABI,
             functionName: "castVote",
-            args: [BigInt(proposalId), encryptedVote.ciphertext, encryptedVote.proof],
+            args: [BigInt(proposalId), BigInt(encryptedVote.ciphertext), encryptedVote.proof],
           });
           return { hash, encrypted: true, ciphertext: encryptedVote.ciphertext };
         } catch (err: any) {
